@@ -1,12 +1,12 @@
 import express from 'express';
 import { query } from '../db/connection.js';
-import { authenticate, requireRole } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, requireEditor } from '../middleware/auth.js';
 import slugify from 'slugify';
 
 const router = express.Router();
 
 // Get all menus
-router.get('/', authenticate, async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
     const menus = await query(`
       SELECT m.*, COUNT(mi.id) as item_count 
@@ -22,7 +22,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // Get single menu with items
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
     const [menu] = await query('SELECT * FROM menus WHERE id = ?', [req.params.id]);
     if (!menu) {
@@ -100,7 +100,7 @@ router.get('/slug/:slug', async (req, res) => {
 });
 
 // Create menu
-router.post('/', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.post('/', requireAuth, requireEditor, async (req, res) => {
   try {
     const { name, description } = req.body;
     const slug = slugify(name, { lower: true, strict: true });
@@ -121,7 +121,7 @@ router.post('/', authenticate, requireRole('admin', 'editor'), async (req, res) 
 });
 
 // Update menu
-router.put('/:id', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.put('/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     const { name, description } = req.body;
     const slug = slugify(name, { lower: true, strict: true });
@@ -139,7 +139,7 @@ router.put('/:id', authenticate, requireRole('admin', 'editor'), async (req, res
 });
 
 // Delete menu
-router.delete('/:id', authenticate, requireRole('admin'), async (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     await query('DELETE FROM menus WHERE id = ?', [req.params.id]);
     res.json({ message: 'Menu deleted' });
@@ -149,7 +149,7 @@ router.delete('/:id', authenticate, requireRole('admin'), async (req, res) => {
 });
 
 // Add menu item
-router.post('/:id/items', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.post('/:id/items', requireAuth, requireEditor, async (req, res) => {
   try {
     const { title, url, page_id, parent_id, target } = req.body;
 
@@ -174,7 +174,7 @@ router.post('/:id/items', authenticate, requireRole('admin', 'editor'), async (r
 });
 
 // Update menu item
-router.put('/:menuId/items/:itemId', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.put('/:menuId/items/:itemId', requireAuth, requireEditor, async (req, res) => {
   try {
     const { title, url, page_id, parent_id, target, position } = req.body;
 
@@ -191,7 +191,7 @@ router.put('/:menuId/items/:itemId', authenticate, requireRole('admin', 'editor'
 });
 
 // Delete menu item
-router.delete('/:menuId/items/:itemId', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.delete('/:menuId/items/:itemId', requireAuth, requireEditor, async (req, res) => {
   try {
     await query('DELETE FROM menu_items WHERE id = ? AND menu_id = ?', [req.params.itemId, req.params.menuId]);
     res.json({ message: 'Menu item deleted' });
@@ -201,7 +201,7 @@ router.delete('/:menuId/items/:itemId', authenticate, requireRole('admin', 'edit
 });
 
 // Reorder menu items
-router.put('/:id/reorder', authenticate, requireRole('admin', 'editor'), async (req, res) => {
+router.put('/:id/reorder', requireAuth, requireEditor, async (req, res) => {
   try {
     const { items } = req.body; // Array of { id, position, parent_id }
 
