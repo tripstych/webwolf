@@ -1,0 +1,122 @@
+{% extends "layouts/base.njk" %}
+
+{% block styles %}
+.page-header {
+  padding: 3rem 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.page-content {
+  padding: 3rem 0;
+}
+
+.page-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 3rem;
+}
+
+@media (max-width: 768px) {
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-body {
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+
+.page-body h2 {
+  font-size: 1.75rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.page-body h3 {
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.page-body p {
+  margin-bottom: 1.25rem;
+}
+
+.page-body ul, .page-body ol {
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.page-body li {
+  margin-bottom: 0.5rem;
+}
+
+.page-body img {
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.page-body blockquote {
+  border-left: 4px solid var(--color-primary);
+  padding-left: 1.5rem;
+  margin: 1.5rem 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.sidebar {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  height: fit-content;
+  position: sticky;
+  top: calc(var(--header-height) + 1.5rem);
+}
+
+.sidebar h3 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <div class="container">
+    <h1 data-cms-region="page_title" data-cms-type="text" data-cms-label="Page Title">
+      {{ content.page_title | default(page.title) }}
+    </h1>
+  </div>
+</header>
+
+<section class="page-content">
+  <div class="container">
+    <div class="page-grid">
+      <article class="page-body" 
+               data-cms-region="page_content" 
+               data-cms-type="richtext" 
+               data-cms-label="Page Content">
+        {{ content.page_content | safe | default('<p>Page content goes here.</p>') }}
+      </article>
+      
+      {% if content.sidebar_content %}
+      <aside class="sidebar" 
+             data-cms-region="sidebar_content" 
+             data-cms-type="richtext" 
+             data-cms-label="Sidebar Content">
+        {{ content.sidebar_content | safe }}
+      </aside>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

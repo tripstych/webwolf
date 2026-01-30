@@ -1,0 +1,133 @@
+{% extends "layouts/base.njk" %}
+
+{% block styles %}
+.hero {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--color-text);
+}
+
+.hero p {
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  max-width: 600px;
+  margin: 0 auto 2rem;
+}
+
+.intro {
+  padding: 4rem 0;
+}
+
+.intro-content {
+  max-width: 800px;
+  margin: 0 auto;
+  font-size: 1.125rem;
+}
+
+.features {
+  padding: 4rem 0;
+  background: var(--color-surface);
+}
+
+.features h2 {
+  text-align: center;
+  font-size: 2rem;
+  margin-bottom: 3rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.feature-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.feature-card p {
+  color: var(--color-text-muted);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: white;
+  font-size: 1.5rem;
+}
+{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="container">
+    <h1 data-cms-region="hero_title" data-cms-type="text" data-cms-label="Hero Title">
+      {{ content.hero_title | default('Welcome to Our Site') }}
+    </h1>
+    <p data-cms-region="hero_subtitle" data-cms-type="text" data-cms-label="Hero Subtitle">
+      {{ content.hero_subtitle | default('Build something amazing today') }}
+    </p>
+    {% if content.hero_cta_text %}
+    <a href="{{ content.hero_cta_link | default('#') }}" 
+       class="btn btn-primary"
+       data-cms-region="hero_cta_text" 
+       data-cms-type="text" 
+       data-cms-label="CTA Button Text">
+      {{ content.hero_cta_text }}
+    </a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="intro">
+  <div class="container">
+    <div class="intro-content" 
+         data-cms-region="intro_content" 
+         data-cms-type="richtext" 
+         data-cms-label="Introduction Content">
+      {{ content.intro_content | safe | default('<p>Welcome to our website.</p>') }}
+    </div>
+  </div>
+</section>
+
+{% if content.features and content.features.length > 0 %}
+<section class="features">
+  <div class="container">
+    <h2>Features</h2>
+    <div class="features-grid" 
+         data-cms-region="features" 
+         data-cms-type="repeater" 
+         data-cms-label="Features"
+         data-cms-fields='[{"name":"title","type":"text","label":"Title"},{"name":"description","type":"textarea","label":"Description"},{"name":"icon","type":"text","label":"Icon"}]'>
+      {% for feature in content.features %}
+      <div class="feature-card">
+        <div class="feature-icon">{{ feature.icon | default('★') }}</div>
+        <h3>{{ feature.title }}</h3>
+        <p>{{ feature.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

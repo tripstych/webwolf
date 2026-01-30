@@ -1,0 +1,190 @@
+{% extends "layouts/base.njk" %}
+
+{% block styles %}
+.post-header {
+  padding: 3rem 0;
+  background: var(--color-surface);
+}
+
+.post-header .container {
+  max-width: 800px;
+}
+
+.post-meta {
+  display: flex;
+  gap: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.post-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.post-excerpt {
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+}
+
+.post-featured-image {
+  width: 100%;
+  max-height: 500px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  margin-top: 2rem;
+}
+
+.post-content {
+  padding: 3rem 0;
+}
+
+.post-content .container {
+  max-width: 800px;
+}
+
+.post-body {
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+
+.post-body h2 {
+  font-size: 1.75rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.post-body h3 {
+  font-size: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.post-body p {
+  margin-bottom: 1.5rem;
+}
+
+.post-body ul, .post-body ol {
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.post-body li {
+  margin-bottom: 0.5rem;
+}
+
+.post-body img {
+  border-radius: 0.5rem;
+  margin: 2rem 0;
+}
+
+.post-body blockquote {
+  border-left: 4px solid var(--color-primary);
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 1.25rem;
+}
+
+.post-body pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.post-body code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.post-body p code {
+  background: var(--color-surface);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.post-tag {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+}
+{% endblock %}
+
+{% block content %}
+<header class="post-header">
+  <div class="container">
+    <div class="post-meta">
+      {% if content.author %}
+      <span data-cms-region="author" data-cms-type="text" data-cms-label="Author Name">
+        By {{ content.author }}
+      </span>
+      {% endif %}
+      {% if page.published_at %}
+      <span>{{ page.published_at | date("F j, Y") }}</span>
+      {% endif %}
+    </div>
+    
+    <h1 data-cms-region="post_title" data-cms-type="text" data-cms-label="Post Title">
+      {{ content.post_title | default(page.title) }}
+    </h1>
+    
+    {% if content.excerpt %}
+    <p class="post-excerpt" 
+       data-cms-region="excerpt" 
+       data-cms-type="textarea" 
+       data-cms-label="Excerpt">
+      {{ content.excerpt }}
+    </p>
+    {% endif %}
+    
+    {% if content.featured_image %}
+    <img src="{{ content.featured_image }}" 
+         alt="{{ content.post_title }}" 
+         class="post-featured-image"
+         data-cms-region="featured_image" 
+         data-cms-type="image" 
+         data-cms-label="Featured Image">
+    {% endif %}
+  </div>
+</header>
+
+<article class="post-content">
+  <div class="container">
+    <div class="post-body" 
+         data-cms-region="post_content" 
+         data-cms-type="richtext" 
+         data-cms-label="Post Content">
+      {{ content.post_content | safe | default('<p>Post content goes here.</p>') }}
+    </div>
+    
+    {% if content.tags %}
+    <div class="post-tags" 
+         data-cms-region="tags" 
+         data-cms-type="text" 
+         data-cms-label="Tags (comma separated)">
+      {% for tag in content.tags.split(',') %}
+      <span class="post-tag">{{ tag | trim }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}
