@@ -77,9 +77,9 @@ export function extractRegions(content) {
  * Extract a specific attribute value from an HTML tag string
  */
 function extractAttribute(tagString, attrName) {
-  const regex = new RegExp(`${attrName}=["']([^"']*)["']`, 'i');
+  const regex = new RegExp(`${attrName}=("([^"]*)"|'([^']*)')`, 'i');
   const match = tagString.match(regex);
-  return match ? match[1] : null;
+  return match ? (match[2] ?? match[3] ?? null) : null;
 }
 
 /**
