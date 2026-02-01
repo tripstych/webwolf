@@ -235,8 +235,28 @@ export default function PageEditor() {
 
       case 'repeater':
         const items = page.content[region.name] || [];
+        const explicitFields = Array.isArray(region.fields) && region.fields.length > 0 ? region.fields : null;
+        const inferredFields = !explicitFields && items[0] && typeof items[0] === 'object' && !Array.isArray(items[0])
+          ? Object.keys(items[0])
+              .filter((key) => key !== 'id')
+              .map((name) => ({
+                name,
+                label: name
+                  .replace(/[-_]/g, ' ')
+                  .replace(/\b\w/g, (c) => c.toUpperCase()),
+                type: name.toLowerCase().includes('description') ? 'textarea' : 'text'
+              }))
+          : null;
+        const fields = explicitFields || inferredFields || [];
         return (
           <div className="space-y-4">
+            {!explicitFields && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                {inferredFields
+                  ? 'Repeater field schema missing for this template. Showing fields inferred from existing data.'
+                  : 'Repeater field schema missing for this template. Sync templates from filesystem to restore field definitions.'}
+              </div>
+            )}
             {items.map((item, index) => (
               <div key={index} className="p-4 border border-gray-200 rounded-lg space-y-3">
                 <div className="flex justify-between items-center">
@@ -249,7 +269,7 @@ export default function PageEditor() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                {region.fields?.map((field) => (
+                {fields.map((field) => (
                   <div key={field.name}>
                     <label className="label">{field.label}</label>
                     {field.type === 'textarea' ? (
@@ -272,7 +292,7 @@ export default function PageEditor() {
             ))}
             <button
               type="button"
-              onClick={() => handleRepeaterAdd(region.name, region.fields || [])}
+              onClick={() => handleRepeaterAdd(region.name, fields)}
               className="btn btn-secondary w-full"
             >
               <Plus className="w-4 h-4 mr-2" />
