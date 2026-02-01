@@ -65,8 +65,20 @@ const router = Router();
 // List all media
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { type, page = 1, limit = 50 } = req.query;
-    const offset = (page - 1) * limit;
+    const { type } = req.query;
+    const pageRaw = req.query.page;
+    const limitRaw = req.query.limit;
+
+    const pageNum = Math.max(1, Number.parseInt(String(pageRaw ?? '1'), 10) || 1);
+    const limitNum = Math.min(200, Math.max(1, Number.parseInt(String(limitRaw ?? '50'), 10) || 50));
+    const offsetNum = (pageNum - 1) * limitNum;
+
+    console.log('[WebWolf:media]', {
+      type,
+      page: pageNum,
+      limit: limitNum,
+      offset: offsetNum
+    });
     
     let sql = 'SELECT * FROM media';
     const params = [];
@@ -80,7 +92,7 @@ router.get('/', requireAuth, async (req, res) => {
     }
     
     sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(limitNum, offsetNum);
     
     const media = await query(sql, params);
     
@@ -101,10 +113,10 @@ router.get('/', requireAuth, async (req, res) => {
     res.json({
       media,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (err) {

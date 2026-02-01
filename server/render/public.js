@@ -5,11 +5,7 @@ import { getAllMenus } from '../services/menuService.js';
 const router = Router();
 
 function shouldLogRender(req) {
-  const enabled = process.env.DEBUG_LOG_RENDER;
-  if (enabled !== '1' && enabled !== 'true') return false;
-  const onlyPath = process.env.DEBUG_LOG_RENDER_PATH;
-  if (!onlyPath) return true;
-  return req.path === onlyPath;
+  return true;
 }
 
 function logRender(...args) {
