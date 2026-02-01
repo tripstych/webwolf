@@ -30,7 +30,7 @@ export default function Menus() {
     url: '',
     page_id: null,
     target: '_self',
-    linkType: 'custom'
+    linkType: 'page'
   });
 
   useEffect(() => {
@@ -64,7 +64,14 @@ export default function Menus() {
   const loadPages = async () => {
     try {
       const data = await api.get('/pages?status=published');
-      setPages(data.pages || []);
+      const normalizedPages = Array.isArray(data) ? data : (data?.pages || []);
+      setPages(normalizedPages);
+      setNewItem(curr => {
+        if (curr.linkType !== 'page') return curr;
+        if (curr.page_id) return curr;
+        if (normalizedPages.length === 0) return curr;
+        return { ...curr, page_id: normalizedPages[0].id };
+      });
     } catch (err) {
       console.error('Failed to load pages:', err);
     }
@@ -108,7 +115,13 @@ export default function Menus() {
       };
       await api.post(`/menus/${selectedMenu.id}/items`, itemData);
       loadMenu(selectedMenu.id);
-      setNewItem({ title: '', url: '', page_id: null, target: '_self', linkType: 'custom' });
+      setNewItem({
+        title: '',
+        url: '',
+        page_id: pages[0]?.id || null,
+        target: '_self',
+        linkType: 'page'
+      });
       setShowNewItem(false);
     } catch (err) {
       alert('Failed to add item: ' + err.message);
@@ -295,7 +308,19 @@ export default function Menus() {
                   <h2 className="text-xl font-semibold text-gray-900">{selectedMenu.name}</h2>
                   <p className="text-sm text-gray-500">Slug: {selectedMenu.slug}</p>
                 </div>
-                <button onClick={() => setShowNewItem(true)} className="btn btn-primary">
+                <button
+                  onClick={() => {
+                    setNewItem({
+                      title: '',
+                      url: '',
+                      page_id: pages[0]?.id || null,
+                      target: '_self',
+                      linkType: 'page'
+                    });
+                    setShowNewItem(true);
+                  }}
+                  className="btn btn-primary"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Item
                 </button>
@@ -351,7 +376,15 @@ export default function Menus() {
                         <label className="label">Page</label>
                         <select
                           value={newItem.page_id || ''}
-                          onChange={(e) => setNewItem({ ...newItem, page_id: e.target.value || null })}
+                          onChange={(e) => {
+                            const pageId = e.target.value || null;
+                            const selectedPage = pages.find(p => String(p.id) === String(pageId));
+                            setNewItem(curr => ({
+                              ...curr,
+                              page_id: pageId,
+                              title: curr.title?.trim() ? curr.title : (selectedPage?.title || '')
+                            }));
+                          }}
                           className="input"
                         >
                           <option value="">Select a page</option>

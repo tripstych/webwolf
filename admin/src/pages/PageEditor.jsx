@@ -176,8 +176,18 @@ export default function PageEditor() {
     if (mediaPickerTarget === 'og_image') {
       setPage(p => ({ ...p, og_image: media.url }));
     } else if (mediaPickerTarget.startsWith('content.')) {
-      const regionName = mediaPickerTarget.replace('content.', '');
-      handleContentChange(regionName, media.url);
+      const remainder = mediaPickerTarget.replace('content.', '');
+      const parts = remainder.split('.');
+      if (parts.length === 1) {
+        const regionName = parts[0];
+        handleContentChange(regionName, media.url);
+      } else if (parts.length === 3) {
+        const [regionName, indexStr, fieldName] = parts;
+        const index = Number.parseInt(indexStr, 10);
+        if (Number.isFinite(index)) {
+          handleRepeaterChange(regionName, index, fieldName, media.url);
+        }
+      }
     }
     setMediaPickerOpen(false);
     setMediaPickerTarget(null);
@@ -244,7 +254,12 @@ export default function PageEditor() {
                 label: name
                   .replace(/[-_]/g, ' ')
                   .replace(/\b\w/g, (c) => c.toUpperCase()),
-                type: name.toLowerCase().includes('description') ? 'textarea' : 'text'
+                type: (() => {
+                  const n = name.toLowerCase();
+                  if (n.includes('description')) return 'textarea';
+                  if (n.includes('image') || n === 'src' || n.endsWith('_src') || n.endsWith('-src')) return 'image';
+                  return 'text';
+                })()
               }))
           : null;
         const fields = explicitFields || inferredFields || [];
@@ -272,7 +287,32 @@ export default function PageEditor() {
                 {fields.map((field) => (
                   <div key={field.name}>
                     <label className="label">{field.label}</label>
-                    {field.type === 'textarea' ? (
+                    {field.type === 'image' ? (
+                      <div className="space-y-2">
+                        {item[field.name] && (
+                          <img src={item[field.name]} alt="" className="max-w-xs rounded-lg border" />
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker(`content.${region.name}.${index}.${field.name}`)}
+                            className="btn btn-secondary"
+                          >
+                            <Image className="w-4 h-4 mr-2" />
+                            {item[field.name] ? 'Change Image' : 'Select Image'}
+                          </button>
+                          {item[field.name] && (
+                            <button
+                              type="button"
+                              onClick={() => handleRepeaterChange(region.name, index, field.name, '')}
+                              className="btn btn-ghost text-red-600"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : field.type === 'textarea' ? (
                       <textarea
                         value={item[field.name] || ''}
                         onChange={(e) => handleRepeaterChange(region.name, index, field.name, e.target.value)}
