@@ -4,6 +4,18 @@ import { getAllMenus } from '../services/menuService.js';
 
 const router = Router();
 
+function shouldLogRender(req) {
+  const enabled = process.env.DEBUG_LOG_RENDER;
+  if (enabled !== '1' && enabled !== 'true') return false;
+  const onlyPath = process.env.DEBUG_LOG_RENDER_PATH;
+  if (!onlyPath) return true;
+  return req.path === onlyPath;
+}
+
+function logRender(...args) {
+  console.log('[WebWolf:render]', ...args);
+}
+
 function setRenderDebugHeaders(req, res, page, content) {
   const token = process.env.DEBUG_TOKEN;
   const debugParam = req.query?.__debug;
@@ -93,6 +105,10 @@ router.get('*', async (req, res) => {
     if (slug !== '/' && slug.endsWith('/')) {
       slug = slug.slice(0, -1);
     }
+
+    if (shouldLogRender(req)) {
+      logRender('request', { path: req.path, normalizedSlug: slug });
+    }
     
     // Get page data
     const pages = await query(`
@@ -101,6 +117,14 @@ router.get('*', async (req, res) => {
       LEFT JOIN templates t ON p.template_id = t.id
       WHERE p.slug = ? AND p.status = 'published'
     `, [slug]);
+
+    if (shouldLogRender(req)) {
+      logRender('db_match', {
+        normalizedSlug: slug,
+        matches: pages.length,
+        ids: pages.map(p => p.id)
+      });
+    }
     
     if (!pages[0]) {
       // Try to render 404 template
@@ -118,6 +142,18 @@ router.get('*', async (req, res) => {
       try {
         content = JSON.parse(page.content);
       } catch (e) {}
+    }
+
+    if (shouldLogRender(req)) {
+      const features = content?.features;
+      logRender('selected_page', {
+        id: page.id,
+        slug: page.slug,
+        template: page.template_filename,
+        featuresType: features === null ? 'null' : typeof features,
+        featuresIsArray: Array.isArray(features),
+        featuresLength: Array.isArray(features) ? features.length : 0
+      });
     }
     
     // Parse schema markup
