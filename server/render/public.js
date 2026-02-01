@@ -12,6 +12,20 @@ function logRender(...args) {
   console.log('[WebWolf:render]', ...args);
 }
 
+function parseJsonField(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    if (value.trim() === '') return null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function setRenderDebugHeaders(req, res, page, content) {
   const token = process.env.DEBUG_TOKEN;
   const debugParam = req.query?.__debug;
@@ -133,12 +147,7 @@ router.get('*', async (req, res) => {
     const page = pages[0];
     
     // Parse content JSON
-    let content = {};
-    if (page.content) {
-      try {
-        content = JSON.parse(page.content);
-      } catch (e) {}
-    }
+    const content = parseJsonField(page.content) || {};
 
     if (shouldLogRender(req)) {
       const features = content?.features;
@@ -153,12 +162,7 @@ router.get('*', async (req, res) => {
     }
     
     // Parse schema markup
-    let schemaMarkup = null;
-    if (page.schema_markup) {
-      try {
-        schemaMarkup = JSON.parse(page.schema_markup);
-      } catch (e) {}
-    }
+    const schemaMarkup = parseJsonField(page.schema_markup);
     
     // Get site settings and menus
     const site = await getSiteSettings();
