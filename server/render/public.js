@@ -4,6 +4,25 @@ import { getAllMenus } from '../services/menuService.js';
 
 const router = Router();
 
+function setRenderDebugHeaders(req, res, page, content) {
+  const token = process.env.DEBUG_TOKEN;
+  const debugParam = req.query?.__debug;
+  if (!token || typeof debugParam !== 'string' || debugParam !== token) return;
+
+  const features = content?.features;
+  const isArray = Array.isArray(features);
+  const length = isArray ? features.length : 0;
+  const type = features === null ? 'null' : typeof features;
+
+  res.setHeader('X-WebWolf-Debug', '1');
+  res.setHeader('X-WebWolf-Page-Id', String(page?.id ?? ''));
+  res.setHeader('X-WebWolf-Page-Slug', String(page?.slug ?? ''));
+  res.setHeader('X-WebWolf-Template', String(page?.template_filename ?? ''));
+  res.setHeader('X-WebWolf-Features-Type', type);
+  res.setHeader('X-WebWolf-Features-IsArray', isArray ? 'true' : 'false');
+  res.setHeader('X-WebWolf-Features-Length', String(length));
+}
+
 // Serve robots.txt
 router.get('/robots.txt', async (req, res) => {
   try {
@@ -128,6 +147,8 @@ router.get('*', async (req, res) => {
       },
       schema: schemaMarkup
     };
+
+    setRenderDebugHeaders(req, res, page, content);
     
     // Render template
     res.render(page.template_filename, {
