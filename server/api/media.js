@@ -91,8 +91,9 @@ router.get('/', requireAuth, async (req, res) => {
       params.push('image/%');
     }
     
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(limitNum, offsetNum);
+    // Some MySQL/MariaDB configs do not accept prepared statement placeholders for LIMIT/OFFSET.
+    // These values are sanitized integers, so inlining is safe here.
+    sql += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
     
     const media = await query(sql, params);
     
