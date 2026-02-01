@@ -17,9 +17,7 @@ export default function Templates() {
     try {
       const data = await api.get('/templates');
       setTemplates(data);
-      if (data.length > 0 && !selectedTemplate) {
-        setSelectedTemplate(data[0]);
-      }
+      setSelectedTemplate(data[0]);
     } catch (err) {
       console.error('Failed to load templates:', err);
     } finally {
