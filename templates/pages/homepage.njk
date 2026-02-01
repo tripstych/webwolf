@@ -110,7 +110,7 @@
   </div>
 </section>
 
-{% if content.features and content.features.length > 0 %}
+{% if content.features and (content.features | length) > 0 %}
 <section class="features">
   <div class="container">
     <h2>Features</h2>
