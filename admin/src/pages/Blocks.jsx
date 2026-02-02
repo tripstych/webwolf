@@ -78,7 +78,7 @@ export default function Blocks() {
       </div>
 
       {/* Blocks Table */}
-      <div className="card overflow-x-auto">
+      <div className="card overflow-visible">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
