@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/connection.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
-import { scanTemplates, syncTemplatesToDb, parseTemplate } from '../services/templateParser.js';
+import { scanTemplates, scanBlockTemplates, syncTemplatesToDb, parseTemplate } from '../services/templateParser.js';
 
 const router = Router();
 
@@ -12,10 +12,11 @@ router.get('/', requireAuth, async (req, res) => {
       SELECT t.*, COUNT(p.id) as page_count
       FROM templates t
       LEFT JOIN pages p ON t.id = p.template_id
+      WHERE t.filename NOT LIKE 'blocks/%'
       GROUP BY t.id
       ORDER BY t.name
     `);
-    
+
     // Parse JSON regions
     templates.forEach(template => {
       if (template.regions) {
@@ -24,11 +25,39 @@ router.get('/', requireAuth, async (req, res) => {
         } catch (e) {}
       }
     });
-    
+
     res.json(templates);
   } catch (err) {
     console.error('List templates error:', err);
     res.status(500).json({ error: 'Failed to list templates' });
+  }
+});
+
+// List block templates only
+router.get('/blocks/list', requireAuth, async (req, res) => {
+  try {
+    const templates = await query(`
+      SELECT t.*, COUNT(b.id) as block_count
+      FROM templates t
+      LEFT JOIN blocks b ON t.id = b.template_id
+      WHERE t.filename LIKE 'blocks/%'
+      GROUP BY t.id
+      ORDER BY t.name
+    `);
+
+    // Parse JSON regions
+    templates.forEach(template => {
+      if (template.regions) {
+        try {
+          template.regions = JSON.parse(template.regions);
+        } catch (e) {}
+      }
+    });
+
+    res.json(templates);
+  } catch (err) {
+    console.error('List block templates error:', err);
+    res.status(500).json({ error: 'Failed to list block templates' });
   }
 });
 

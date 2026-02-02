@@ -1,0 +1,29 @@
+<div class="cta-block" style="padding: 3rem 0; background: var(--color-surface); border-radius: 0.75rem; text-align: center;">
+  <div class="container">
+    <h2 data-cms-region="cta_heading"
+        data-cms-type="text"
+        data-cms-label="CTA Heading"
+        style="font-size: 2rem; margin-bottom: 1rem;">
+      {{ content.cta_heading | default('Ready to get started?') }}
+    </h2>
+
+    <div class="cta-content"
+         data-cms-region="cta_content"
+         data-cms-type="richtext"
+         data-cms-label="CTA Content"
+         style="margin-bottom: 2rem; color: var(--color-text-muted);">
+      {{ content.cta_content | safe | default('<p>Add your call to action content here</p>') }}
+    </div>
+
+    <a href="{{ content.cta_link | default('#') }}"
+       class="btn btn-primary"
+       style="display: inline-block; padding: 0.75rem 2rem;">
+      <span data-cms-region="cta_text"
+            data-cms-type="text"
+            data-cms-label="Button Text"
+            data-cms-placeholder="e.g., Learn More">
+        {{ content.cta_text | default('Learn More') }}
+      </span>
+    </a>
+  </div>
+</div>

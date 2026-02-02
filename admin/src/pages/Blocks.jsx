@@ -56,7 +56,7 @@ export default function Blocks() {
 
   const loadTemplates = async () => {
     try {
-      const data = await api.get('/templates');
+      const data = await api.get('/templates/blocks/list');
       setTemplates(data);
     } catch (err) {
       console.error('Failed to load templates:', err);

@@ -96,13 +96,13 @@ function formatLabel(name) {
  */
 export async function scanTemplates() {
   const templates = [];
-  
+
   async function scanDir(dir, prefix = '') {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
-      
+
       if (entry.isDirectory()) {
         // Skip layouts directory for page templates
         if (entry.name !== 'layouts') {
@@ -118,7 +118,67 @@ export async function scanTemplates() {
       }
     }
   }
-  
+
+  await scanDir(TEMPLATES_DIR);
+  return templates;
+}
+
+/**
+ * Scan only block templates (from blocks/ directory)
+ */
+export async function scanBlockTemplates() {
+  const templates = [];
+  const blocksDir = path.join(TEMPLATES_DIR, 'blocks');
+
+  try {
+    const entries = await fs.readdir(blocksDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.njk')) {
+        const relativePath = `blocks/${entry.name}`;
+        const regions = await parseTemplate(relativePath);
+        templates.push({
+          filename: relativePath,
+          name: formatLabel(entry.name.replace('.njk', '')),
+          regions
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to scan block templates:', err.message);
+  }
+
+  return templates;
+}
+
+/**
+ * Scan only page templates (excluding blocks/ and layouts/)
+ */
+export async function scanPageTemplates() {
+  const templates = [];
+
+  async function scanDir(dir, prefix = '') {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+      if (entry.isDirectory()) {
+        // Skip layouts and blocks directories
+        if (entry.name !== 'layouts' && entry.name !== 'blocks') {
+          await scanDir(path.join(dir, entry.name), relativePath);
+        }
+      } else if (entry.name.endsWith('.njk')) {
+        const regions = await parseTemplate(relativePath);
+        templates.push({
+          filename: relativePath,
+          name: formatLabel(entry.name.replace('.njk', '')),
+          regions
+        });
+      }
+    }
+  }
+
   await scanDir(TEMPLATES_DIR);
   return templates;
 }
