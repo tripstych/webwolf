@@ -34,9 +34,9 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Block not found' });
     }
 
-    // Parse content and regions
-    block.content = block.content ? JSON.parse(block.content) : {};
-    block.regions = block.regions ? JSON.parse(block.regions) : [];
+    // Parse content and regions (mysql2 auto-parses JSON fields, so check type first)
+    block.content = typeof block.content === 'string' ? JSON.parse(block.content) : (block.content || {});
+    block.regions = typeof block.regions === 'string' ? JSON.parse(block.regions) : (block.regions || []);
 
     // Return only serializable fields
     res.json({
@@ -63,23 +63,34 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
   try {
     const { template_id, name, description, content } = req.body;
 
+    console.log('[BLOCKS:POST] Received content type:', typeof content);
+    console.log('[BLOCKS:POST] Content keys:', content ? Object.keys(content) : 'null');
+
     if (!name || !template_id) {
       return res.status(400).json({ error: 'Name and template are required' });
     }
 
     const slug = slugify(name, { lower: true, strict: true });
 
+    const contentStr = JSON.stringify(content || {});
+    console.log('[BLOCKS:POST] Stringified content length:', contentStr.length);
+    console.log('[BLOCKS:POST] Stringified content preview:', contentStr.substring(0, 100));
+
     const result = await query(
       `INSERT INTO blocks (template_id, name, slug, description, content, created_by)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [template_id, name, slug, description || null, JSON.stringify(content || {}), req.user?.id || null]
+      [template_id, name, slug, description || null, contentStr, req.user?.id || null]
     );
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [result.insertId]);
-    block.content = block.content ? JSON.parse(block.content) : {};
+    console.log('[BLOCKS:POST] Retrieved content type:', typeof block.content);
+    console.log('[BLOCKS:POST] Retrieved content preview:', String(block.content).substring(0, 100));
+
+    // mysql2 auto-parses JSON fields, so check type first
+    block.content = typeof block.content === 'string' ? JSON.parse(block.content) : (block.content || {});
 
     // Return only serializable fields
-    res.status(201).json({
+    const response = {
       id: block.id,
       template_id: block.template_id,
       name: block.name,
@@ -90,11 +101,15 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       updated_by: block.updated_by,
       created_at: block.created_at,
       updated_at: block.updated_at
-    });
+    };
+
+    console.log('[BLOCKS:POST] Response content type:', typeof response.content);
+    res.status(201).json(response);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
     }
+    console.error('[BLOCKS:POST] Error:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
@@ -150,7 +165,8 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
     console.log('[BLOCKS:PUT] Retrieved content type:', typeof block.content);
     console.log('[BLOCKS:PUT] Retrieved content preview:', String(block.content).substring(0, 100));
 
-    block.content = block.content ? JSON.parse(block.content) : {};
+    // mysql2 auto-parses JSON fields, so check type first
+    block.content = typeof block.content === 'string' ? JSON.parse(block.content) : (block.content || {});
 
     // Return only serializable fields
     const response = {
