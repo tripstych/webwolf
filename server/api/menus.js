@@ -200,6 +200,44 @@ router.delete('/:menuId/items/:itemId', requireAuth, requireEditor, async (req, 
   }
 });
 
+// Reorder single menu item
+router.put('/:menuId/items/:itemId/reorder', requireAuth, requireEditor, async (req, res) => {
+  try {
+    const { direction } = req.body;
+    const [item] = await query('SELECT * FROM menu_items WHERE id = ? AND menu_id = ?', [req.params.itemId, req.params.menuId]);
+
+    if (!item) {
+      return res.status(404).json({ error: 'Menu item not found' });
+    }
+
+    // Get sibling items (same parent_id)
+    const siblings = await query(
+      'SELECT * FROM menu_items WHERE menu_id = ? AND parent_id <=> ? ORDER BY position',
+      [req.params.menuId, item.parent_id]
+    );
+
+    const currentIndex = siblings.findIndex(s => s.id === item.id);
+    let targetIndex = currentIndex;
+
+    if (direction === 'up' && currentIndex > 0) {
+      targetIndex = currentIndex - 1;
+    } else if (direction === 'down' && currentIndex < siblings.length - 1) {
+      targetIndex = currentIndex + 1;
+    }
+
+    if (targetIndex !== currentIndex) {
+      // Swap positions
+      const sibling = siblings[targetIndex];
+      await query('UPDATE menu_items SET position = ? WHERE id = ?', [sibling.position, item.id]);
+      await query('UPDATE menu_items SET position = ? WHERE id = ?', [item.position, sibling.id]);
+    }
+
+    res.json({ message: 'Menu item reordered' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Reorder menu items
 router.put('/:id/reorder', requireAuth, requireEditor, async (req, res) => {
   try {

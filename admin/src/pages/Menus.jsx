@@ -12,7 +12,9 @@ import {
   Link as LinkIcon,
   X,
   Check,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 
 export default function Menus() {
@@ -142,6 +144,15 @@ export default function Menus() {
     }
   };
 
+  const handleReorderItem = async (itemId, direction) => {
+    try {
+      await api.put(`/menus/${selectedMenu.id}/items/${itemId}/reorder`, { direction });
+      loadMenu(selectedMenu.id);
+    } catch (err) {
+      alert('Failed to reorder item: ' + err.message);
+    }
+  };
+
   const toggleExpand = (id) => {
     setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -171,26 +182,75 @@ export default function Menus() {
           )}
 
           {isEditing ? (
-            <div className="flex-1 flex items-center gap-2">
-              <input
-                type="text"
-                value={editingItem.title}
-                onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                className="input flex-1"
-              />
-              <input
-                type="text"
-                value={editingItem.url || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, url: e.target.value })}
-                className="input flex-1"
-                placeholder="URL"
-              />
-              <button onClick={() => handleUpdateItem(editingItem)} className="p-1 text-green-600">
-                <Check className="w-4 h-4" />
-              </button>
-              <button onClick={() => setEditingItem(null)} className="p-1 text-gray-500">
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex-1 space-y-3">
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={!editingItem.page_id}
+                    onChange={() => setEditingItem({ ...editingItem, page_id: null, url: editingItem.url || '' })}
+                  />
+                  Custom URL
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    checked={!!editingItem.page_id}
+                    onChange={() => setEditingItem({ ...editingItem, url: null, page_id: editingItem.page_id || pages[0]?.id || null })}
+                  />
+                  Page
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editingItem.title}
+                  onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                  className="input flex-1"
+                  placeholder="Title"
+                />
+                {!editingItem.page_id ? (
+                  <input
+                    type="text"
+                    value={editingItem.url || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, url: e.target.value })}
+                    className="input flex-1"
+                    placeholder="https://..."
+                  />
+                ) : (
+                  <select
+                    value={editingItem.page_id || ''}
+                    onChange={(e) => {
+                      const pageId = e.target.value || null;
+                      setEditingItem({ ...editingItem, page_id: pageId });
+                    }}
+                    className="input flex-1"
+                  >
+                    <option value="">Select a page</option>
+                    {pages.map(page => (
+                      <option key={page.id} value={page.id}>{page.title}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editingItem.target === '_blank'}
+                    onChange={(e) => setEditingItem({ ...editingItem, target: e.target.checked ? '_blank' : '_self' })}
+                  />
+                  Open in new tab
+                </label>
+                <button onClick={() => handleUpdateItem(editingItem)} className="p-1 text-green-600 ml-auto">
+                  <Check className="w-4 h-4" />
+                </button>
+                <button onClick={() => setEditingItem(null)} className="p-1 text-gray-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -216,12 +276,28 @@ export default function Menus() {
               <button
                 onClick={() => setEditingItem({ ...item })}
                 className="p-1 text-gray-500 hover:text-gray-700"
+                title="Edit"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button
+                onClick={() => handleReorderItem(item.id, 'up')}
+                className="p-1 text-gray-500 hover:text-gray-700"
+                title="Move up"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleReorderItem(item.id, 'down')}
+                className="p-1 text-gray-500 hover:text-gray-700"
+                title="Move down"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => handleDeleteItem(item.id)}
                 className="p-1 text-red-500 hover:text-red-700"
+                title="Delete"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
