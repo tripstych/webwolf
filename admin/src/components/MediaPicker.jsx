@@ -47,7 +47,7 @@ export default function MediaPicker({ onSelect, onClose }) {
     if (selected) {
       onSelect({
         id: selected.id,
-        url: selected.path || selected.url,
+        url: `/uploads${selected.path}`,
         alt: selected.alt_text || ''
       });
     }
@@ -109,7 +109,7 @@ export default function MediaPicker({ onSelect, onClose }) {
                   }`}
                 >
                   <img
-                    src={item.path || `/uploads${item.path}`}
+                    src={`/uploads${item.path}`}
                     alt={item.alt_text || ''}
                     className="w-full h-full object-cover"
                   />

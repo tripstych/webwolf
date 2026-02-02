@@ -58,10 +58,6 @@ export default function PageEditor() {
     try {
       const data = await api.get('/templates');
       setTemplates(data);
-      if (isNew && data.length > 0) {
-        setPage(p => ({ ...p, template_id: data[0].id }));
-        setRegions(data[0].regions || []);
-      }
     } catch (err) {
       console.error('Failed to load templates:', err);
     }
@@ -94,8 +90,9 @@ export default function PageEditor() {
   };
 
   const handleTemplateChange = (templateId) => {
-    const template = templates.find(t => t.id === parseInt(templateId));
-    setPage(p => ({ ...p, template_id: templateId }));
+    const numId = parseInt(templateId);
+    const template = templates.find(t => t.id === numId);
+    setPage(p => ({ ...p, template_id: numId }));
     setRegions(template?.regions || []);
   };
 
@@ -469,13 +466,13 @@ export default function PageEditor() {
             <div>
               <label className="label">Template</label>
               <select
-                value={page.template_id}
+                value={page.template_id || ''}
                 onChange={(e) => handleTemplateChange(e.target.value)}
                 className="input"
               >
                 <option value="">Select template</option>
                 {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <option key={t.id} value={String(t.id)}>
                     {t.name}
                   </option>
                 ))}

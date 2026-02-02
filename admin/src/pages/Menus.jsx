@@ -66,12 +66,6 @@ export default function Menus() {
       const data = await api.get('/pages?status=published');
       const normalizedPages = Array.isArray(data) ? data : (data?.pages || []);
       setPages(normalizedPages);
-      setNewItem(curr => {
-        if (curr.linkType !== 'page') return curr;
-        if (curr.page_id) return curr;
-        if (normalizedPages.length === 0) return curr;
-        return { ...curr, page_id: normalizedPages[0].id };
-      });
     } catch (err) {
       console.error('Failed to load pages:', err);
     }
@@ -118,7 +112,7 @@ export default function Menus() {
       setNewItem({
         title: '',
         url: '',
-        page_id: pages[0]?.id || null,
+        page_id: null,
         target: '_self',
         linkType: 'page'
       });
@@ -313,7 +307,7 @@ export default function Menus() {
                     setNewItem({
                       title: '',
                       url: '',
-                      page_id: pages[0]?.id || null,
+                      page_id: null,
                       target: '_self',
                       linkType: 'page'
                     });
