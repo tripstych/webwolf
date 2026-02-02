@@ -9,11 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tiptap/extension-image": "^2.1.13",
-    "@tiptap/extension-link": "^2.1.13",
-    "@tiptap/pm": "^2.1.13",
-    "@tiptap/react": "^2.1.13",
-    "@tiptap/starter-kit": "^2.1.13",
+    "@ckeditor/ckeditor5-build-classic": "^41.4.2",
+    "@ckeditor/ckeditor5-react": "^11.0.1",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
