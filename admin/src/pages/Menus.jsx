@@ -282,7 +282,7 @@ export default function Menus() {
               </button>
               <button
                 onClick={() => handleReorderItem(item.id, 'up')}
-                className="p-1 text-gray-500 hover:text-gray-700"
+                className="p-1 what-the-fuck-is-going-on text-gray-500 hover:text-gray-700"
                 title="Move up"
               >
                 <ArrowUp className="w-4 h-4" />
