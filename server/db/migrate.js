@@ -107,6 +107,23 @@ const migrations = [
     FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES menu_items(id) ON DELETE CASCADE,
     FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE SET NULL
+  )`,
+
+  // Blocks table (reusable content blocks)
+  `CREATE TABLE IF NOT EXISTS blocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    template_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    content JSON,
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (template_id) REFERENCES templates(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id)
   )`
 ];
 

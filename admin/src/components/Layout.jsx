@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  List
+  List,
+  Boxes
 } from 'lucide-react';
 
 const navigation = [
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Templates', href: '/templates', icon: Layers },
   { name: 'Media', href: '/media', icon: Image },
   { name: 'Menus', href: '/menus', icon: List },
+  { name: 'Blocks', href: '/blocks', icon: Boxes },
   { name: 'SEO', href: '/seo', icon: Search },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
