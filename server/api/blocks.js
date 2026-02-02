@@ -38,7 +38,21 @@ router.get('/:id', requireAuth, async (req, res) => {
     block.content = block.content ? JSON.parse(block.content) : {};
     block.regions = block.regions ? JSON.parse(block.regions) : [];
 
-    res.json(block);
+    // Return only serializable fields
+    res.json({
+      id: block.id,
+      template_id: block.template_id,
+      name: block.name,
+      slug: block.slug,
+      description: block.description,
+      content: block.content,
+      regions: block.regions,
+      template_name: block.template_name,
+      created_by: block.created_by,
+      updated_by: block.updated_by,
+      created_at: block.created_at,
+      updated_at: block.updated_at
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -63,7 +77,20 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [result.insertId]);
     block.content = block.content ? JSON.parse(block.content) : {};
-    res.status(201).json(block);
+
+    // Return only serializable fields
+    res.status(201).json({
+      id: block.id,
+      template_id: block.template_id,
+      name: block.name,
+      slug: block.slug,
+      description: block.description,
+      content: block.content,
+      created_by: block.created_by,
+      updated_by: block.updated_by,
+      created_at: block.created_at,
+      updated_at: block.updated_at
+    });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
@@ -115,7 +142,20 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [req.params.id]);
     block.content = block.content ? JSON.parse(block.content) : {};
-    res.json(block);
+
+    // Return only serializable fields
+    res.json({
+      id: block.id,
+      template_id: block.template_id,
+      name: block.name,
+      slug: block.slug,
+      description: block.description,
+      content: block.content,
+      created_by: block.created_by,
+      updated_by: block.updated_by,
+      created_at: block.created_at,
+      updated_at: block.updated_at
+    });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
