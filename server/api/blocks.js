@@ -104,6 +104,9 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     const { template_id, name, description, content } = req.body;
 
+    console.log('[BLOCKS:PUT] Received content type:', typeof content);
+    console.log('[BLOCKS:PUT] Content keys:', content ? Object.keys(content) : 'null');
+
     const slug = name ? slugify(name, { lower: true, strict: true }) : undefined;
 
     const updates = [];
@@ -126,8 +129,11 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       values.push(description || null);
     }
     if (content !== undefined) {
+      const contentStr = JSON.stringify(content);
+      console.log('[BLOCKS:PUT] Stringified content length:', contentStr.length);
+      console.log('[BLOCKS:PUT] Stringified content preview:', contentStr.substring(0, 100));
       updates.push('content = ?');
-      values.push(JSON.stringify(content));
+      values.push(contentStr);
     }
 
     updates.push('updated_by = ?');
@@ -141,10 +147,13 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
     );
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [req.params.id]);
+    console.log('[BLOCKS:PUT] Retrieved content type:', typeof block.content);
+    console.log('[BLOCKS:PUT] Retrieved content preview:', String(block.content).substring(0, 100));
+
     block.content = block.content ? JSON.parse(block.content) : {};
 
     // Return only serializable fields
-    res.json({
+    const response = {
       id: block.id,
       template_id: block.template_id,
       name: block.name,
@@ -155,11 +164,15 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       updated_by: block.updated_by,
       created_at: block.created_at,
       updated_at: block.updated_at
-    });
+    };
+
+    console.log('[BLOCKS:PUT] Response content type:', typeof response.content);
+    res.json(response);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
     }
+    console.error('[BLOCKS:PUT] Error:', err.message, err.stack);
     res.status(500).json({ error: err.message });
   }
 });
