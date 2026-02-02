@@ -89,14 +89,47 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
   try {
     const templates = await syncTemplatesToDb(query);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Synced ${templates.length} templates`,
-      templates 
+      templates
     });
   } catch (err) {
     console.error('Sync templates error:', err);
     res.status(500).json({ error: 'Failed to sync templates' });
+  }
+});
+
+// Reload templates in Nunjucks (clears cache)
+router.post('/reload', requireAuth, requireAdmin, (req, res) => {
+  try {
+    const nunjucksEnv = req.app.locals.nunjucksEnv;
+    if (!nunjucksEnv) {
+      return res.status(500).json({ error: 'Nunjucks environment not found' });
+    }
+
+    // Clear the Nunjucks cache by resetting the loader cache
+    if (nunjucksEnv.loaders && nunjucksEnv.loaders[0]) {
+      const loader = nunjucksEnv.loaders[0];
+      if (loader.cache) {
+        loader.cache = {};
+      }
+    }
+
+    // Also try the generic reset method if available
+    if (typeof nunjucksEnv.reset === 'function') {
+      nunjucksEnv.reset();
+    }
+
+    console.log('Templates cache cleared');
+
+    res.json({
+      success: true,
+      message: 'Templates reloaded successfully'
+    });
+  } catch (err) {
+    console.error('Reload templates error:', err);
+    res.status(500).json({ error: `Failed to reload templates: ${err.message}` });
   }
 });
 

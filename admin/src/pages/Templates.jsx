@@ -6,6 +6,7 @@ export default function Templates() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [syncMessage, setSyncMessage] = useState('');
 
@@ -39,6 +40,19 @@ export default function Templates() {
     }
   };
 
+  const handleReload = async () => {
+    setReloading(true);
+    setSyncMessage('');
+    try {
+      const result = await api.post('/templates/reload');
+      setSyncMessage(result.message);
+    } catch (err) {
+      setSyncMessage('Reload failed: ' + err.message);
+    } finally {
+      setReloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -51,10 +65,16 @@ export default function Templates() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Templates</h1>
-        <button onClick={handleSync} disabled={syncing} className="btn btn-primary">
-          <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync from Filesystem'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleReload} disabled={reloading} className="btn btn-secondary">
+            <RefreshCw className={`w-4 h-4 mr-2 ${reloading ? 'animate-spin' : ''}`} />
+            {reloading ? 'Reloading...' : 'Reload Cache'}
+          </button>
+          <button onClick={handleSync} disabled={syncing} className="btn btn-primary">
+            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Syncing...' : 'Sync from Filesystem'}
+          </button>
+        </div>
       </div>
 
       {syncMessage && (

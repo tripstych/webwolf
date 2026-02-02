@@ -62,7 +62,7 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
     );
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [result.insertId]);
-    block.content = JSON.parse(block.content);
+    block.content = block.content ? JSON.parse(block.content) : {};
     res.status(201).json(block);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -114,7 +114,7 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
     );
 
     const [block] = await query('SELECT * FROM blocks WHERE id = ?', [req.params.id]);
-    block.content = JSON.parse(block.content);
+    block.content = block.content ? JSON.parse(block.content) : {};
     res.json(block);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {

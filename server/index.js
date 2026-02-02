@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 3000;
 const nunjucksEnv = nunjucks.configure(path.join(__dirname, '../templates'), {
   autoescape: true,
   express: app,
-  watch: process.env.NODE_ENV === 'development'
+  watch: process.env.NODE_ENV === 'development',
+  noCache: process.env.NODE_ENV === 'development'
 });
 
 // Add custom filters for SEO
