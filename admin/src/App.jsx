@@ -9,6 +9,7 @@ import Templates from './pages/Templates';
 import Media from './pages/Media';
 import Menus from './pages/Menus';
 import Blocks from './pages/Blocks';
+import BlockEditor from './pages/BlockEditor';
 import Settings from './pages/Settings';
 import SEO from './pages/SEO';
 
@@ -48,6 +49,8 @@ function App() {
                 <Route path="/media" element={<Media />} />
                 <Route path="/menus" element={<Menus />} />
                 <Route path="/blocks" element={<Blocks />} />
+                <Route path="/blocks/new" element={<BlockEditor />} />
+                <Route path="/blocks/:id" element={<BlockEditor />} />
                 <Route path="/seo" element={<SEO />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

@@ -110,18 +110,20 @@
   </div>
 </section>
 
+{{ renderBlock('cta') | safe }}
+
 {% if content.features and (content.features | length) > 0 %}
 <section class="features">
   <div class="container">
     <h2>Features</h2>
-    <div class="features-grid" 
-         data-cms-region="features" 
-         data-cms-type="repeater" 
+    <div class="features-grid"
+         data-cms-region="features"
+         data-cms-type="repeater"
          data-cms-label="Features"
-         data-cms-fields='[{"name":"title","type":"text","label":"Title"},{"name":"description","type":"textarea","label":"Description"},{"name":"icon","type":"text","label":"Icon"}]'>
+         data-cms-fields="[{&quot;name&quot;:&quot;title&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Title&quot;},{&quot;name&quot;:&quot;description&quot;,&quot;type&quot;:&quot;textarea&quot;,&quot;label&quot;:&quot;Description&quot;},{&quot;name&quot;:&quot;icon&quot;,&quot;type&quot;:&quot;text&quot;,&quot;label&quot;:&quot;Icon&quot;}]">
       {% for feature in content.features %}
       <div class="feature-card">
-        <div class="feature-icon">{{ feature.icon | default('★') }}</div>
+        <div class="feature-icon">{{ feature.icon | default("★") }}</div>
         <h3>{{ feature.title }}</h3>
         <p>{{ feature.description }}</p>
       </div>

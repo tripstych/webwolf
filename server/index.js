@@ -9,7 +9,7 @@ import nunjucks from 'nunjucks';
 
 import apiRoutes from './api/index.js';
 import publicRoutes from './render/public.js';
-import { initDb } from './db/connection.js';
+import { initDb, query } from './db/connection.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -38,12 +38,12 @@ nunjucksEnv.addFilter('date', (date, format = 'YYYY-MM-DD') => {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return '';
-  
+
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
+
   return format
     .replace('YYYY', year)
     .replace('MM', month)
@@ -52,6 +52,46 @@ nunjucksEnv.addFilter('date', (date, format = 'YYYY-MM-DD') => {
     .replace('M', d.getMonth() + 1)
     .replace('D', d.getDate());
 });
+
+// Store nunjucks environment for use in routes
+app.locals.nunjucksEnv = nunjucksEnv;
+
+// Helper function to set up renderBlock for a page render
+export function setupRenderBlock(env, blocksData) {
+  const parseJsonField = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'object') return value;
+    if (typeof value === 'string') {
+      if (value.trim() === '') return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  env.addGlobal('renderBlock', (slug) => {
+    const block = blocksData.find(b => b.slug === slug);
+    if (!block) {
+      console.warn(`Block not found: ${slug}`);
+      return '';
+    }
+
+    try {
+      const blockContent = parseJsonField(block.content) || {};
+      const html = env.render(block.template_filename, {
+        content: blockContent,
+        block
+      });
+      return html;
+    } catch (err) {
+      console.error(`Error rendering block ${slug}:`, err);
+      return '';
+    }
+  });
+}
 
 // Middleware
 app.use(cors({

@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import slugify from 'slugify';
 import RichTextEditor from '../components/RichTextEditor';
 import MediaPicker from '../components/MediaPicker';
 import {
   Save,
   ArrowLeft,
-  Eye,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
   CheckCircle,
   Plus,
@@ -17,7 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export default function PageEditor() {
+export default function BlockEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = !id;
@@ -25,26 +23,17 @@ export default function PageEditor() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState([]);
-  const [seoOpen, setSeoOpen] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaPickerTarget, setMediaPickerTarget] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [syncing, setSyncing] = useState(false);
 
-  const [page, setPage] = useState({
+  const [block, setBlock] = useState({
     template_id: '',
-    title: '',
+    name: '',
     slug: '',
-    status: 'draft',
-    content: {},
-    meta_title: '',
-    meta_description: '',
-    og_title: '',
-    og_description: '',
-    og_image: '',
-    canonical_url: '',
-    robots: 'index, follow'
+    content: {}
   });
 
   const [regions, setRegions] = useState([]);
@@ -52,13 +41,13 @@ export default function PageEditor() {
   useEffect(() => {
     loadTemplates();
     if (!isNew) {
-      loadPage();
+      loadBlock();
     }
   }, [id]);
 
   const loadTemplates = async () => {
     try {
-      const data = await api.get('/templates');
+      const data = await api.get('/templates/blocks/list');
       setTemplates(data);
     } catch (err) {
       console.error('Failed to load templates:', err);
@@ -80,103 +69,106 @@ export default function PageEditor() {
     }
   };
 
-  const loadPage = async () => {
+  const loadBlock = async () => {
     try {
-      const data = await api.get(`/pages/${id}`);
-      setPage({
+      const data = await api.get(`/blocks/${id}`);
+      setBlock({
         template_id: data.template_id,
-        title: data.title,
+        name: data.name,
         slug: data.slug,
-        status: data.status,
-        content: data.content || {},
-        meta_title: data.meta_title || '',
-        meta_description: data.meta_description || '',
-        og_title: data.og_title || '',
-        og_description: data.og_description || '',
-        og_image: data.og_image || '',
-        canonical_url: data.canonical_url || '',
-        robots: data.robots || 'index, follow'
+        content: data.content || {}
       });
-      setRegions(data.template_regions || []);
+      setRegions(data.regions || []);
     } catch (err) {
-      console.error('Failed to load page:', err);
-      setError('Failed to load page');
+      console.error('Failed to load block:', err);
+      setError('Failed to load block');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleNameChange = (name) => {
+    const slug = slugify(name, { lower: true, strict: true });
+    setBlock(b => ({ ...b, name, slug }));
+  };
+
   const handleTemplateChange = (templateId) => {
     const numId = parseInt(templateId);
     const template = templates.find(t => t.id === numId);
-    setPage(p => ({ ...p, template_id: numId }));
+    setBlock(b => ({ ...b, template_id: numId }));
     setRegions(template?.regions || []);
   };
 
   const handleContentChange = (regionName, value) => {
-    setPage(p => ({
-      ...p,
-      content: { ...p.content, [regionName]: value }
+    setBlock(b => ({
+      ...b,
+      content: { ...b.content, [regionName]: value }
     }));
   };
 
   const handleRepeaterAdd = (regionName, fields) => {
     const newItem = {};
     fields.forEach(f => newItem[f.name] = '');
-    setPage(p => ({
-      ...p,
+    setBlock(b => ({
+      ...b,
       content: {
-        ...p.content,
-        [regionName]: [...(p.content[regionName] || []), newItem]
+        ...b.content,
+        [regionName]: [...(b.content[regionName] || []), newItem]
       }
     }));
   };
 
   const handleRepeaterRemove = (regionName, index) => {
-    setPage(p => ({
-      ...p,
+    setBlock(b => ({
+      ...b,
       content: {
-        ...p.content,
-        [regionName]: p.content[regionName].filter((_, i) => i !== index)
+        ...b.content,
+        [regionName]: b.content[regionName].filter((_, i) => i !== index)
       }
     }));
   };
 
   const handleRepeaterChange = (regionName, index, fieldName, value) => {
-    setPage(p => ({
-      ...p,
+    setBlock(b => ({
+      ...b,
       content: {
-        ...p.content,
-        [regionName]: p.content[regionName].map((item, i) =>
+        ...b.content,
+        [regionName]: b.content[regionName].map((item, i) =>
           i === index ? { ...item, [fieldName]: value } : item
         )
       }
     }));
   };
 
-  const handleSave = async (newStatus) => {
+  const handleSave = async () => {
     setError('');
     setSuccess('');
     setSaving(true);
 
     try {
-      const payload = {
-        ...page,
-        status: newStatus || page.status
-      };
-
       if (isNew) {
-        const result = await api.post('/pages', payload);
-        setSuccess('Page created successfully!');
-        navigate(`/pages/${result.id}`, { replace: true });
+        const result = await api.post('/blocks', block);
+        setSuccess('Block created successfully!');
+        navigate(`/blocks/${result.id}`, { replace: true });
       } else {
-        await api.put(`/pages/${id}`, payload);
-        setSuccess('Page saved successfully!');
-        setPage(p => ({ ...p, status: newStatus || p.status }));
+        await api.put(`/blocks/${id}`, block);
+        setSuccess('Block saved successfully!');
       }
     } catch (err) {
-      setError(err.message || 'Failed to save page');
+      setError(err.message || 'Failed to save block');
     } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this block?')) return;
+    setSaving(true);
+    try {
+      await api.delete(`/blocks/${id}`);
+      navigate('/blocks');
+    } catch (err) {
+      setError(err.message || 'Failed to delete block');
       setSaving(false);
     }
   };
@@ -187,9 +179,7 @@ export default function PageEditor() {
   };
 
   const handleMediaSelect = (media) => {
-    if (mediaPickerTarget === 'og_image') {
-      setPage(p => ({ ...p, og_image: media.url }));
-    } else if (mediaPickerTarget.startsWith('content.')) {
+    if (mediaPickerTarget.startsWith('content.')) {
       const remainder = mediaPickerTarget.replace('content.', '');
       const parts = remainder.split('.');
       if (parts.length === 1) {
@@ -208,7 +198,7 @@ export default function PageEditor() {
   };
 
   const renderField = (region) => {
-    const value = page.content[region.name] || '';
+    const value = block.content[region.name] || '';
 
     switch (region.type) {
       case 'richtext':
@@ -258,7 +248,7 @@ export default function PageEditor() {
         );
 
       case 'repeater':
-        const items = page.content[region.name] || [];
+        const items = block.content[region.name] || [];
         const explicitFields = Array.isArray(region.fields) && region.fields.length > 0 ? region.fields : null;
         const inferredFields = !explicitFields && items[0] && typeof items[0] === 'object' && !Array.isArray(items[0])
           ? Object.keys(items[0])
@@ -381,39 +371,30 @@ export default function PageEditor() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/pages')} className="btn btn-ghost">
+          <button onClick={() => navigate('/blocks')} className="btn btn-ghost">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isNew ? 'New Page' : 'Edit Page'}
+            {isNew ? 'New Block' : 'Edit Block'}
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          {page.status === 'published' && (
-            <a
-              href={page.slug}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost"
+          {!isNew && (
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              className="btn btn-ghost text-red-600"
             >
-              <Eye className="w-4 h-4 mr-2" />
-              View
-            </a>
+              Delete
+            </button>
           )}
           <button
-            onClick={() => handleSave('draft')}
-            disabled={saving}
-            className="btn btn-secondary"
-          >
-            Save Draft
-          </button>
-          <button
-            onClick={() => handleSave('published')}
+            onClick={handleSave}
             disabled={saving}
             className="btn btn-primary"
           >
             <Save className="w-4 h-4 mr-2" />
-            {saving ? 'Saving...' : 'Publish'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
@@ -438,23 +419,23 @@ export default function PageEditor() {
           {/* Basic Info */}
           <div className="card p-6 space-y-4">
             <div>
-              <label className="label">Title</label>
+              <label className="label">Name</label>
               <input
                 type="text"
-                value={page.title}
-                onChange={(e) => setPage(p => ({ ...p, title: e.target.value }))}
+                value={block.name}
+                onChange={(e) => handleNameChange(e.target.value)}
                 className="input"
-                placeholder="Page title"
+                placeholder="Block name"
               />
             </div>
             <div>
-              <label className="label">URL Slug</label>
+              <label className="label">Slug</label>
               <input
                 type="text"
-                value={page.slug}
-                onChange={(e) => setPage(p => ({ ...p, slug: e.target.value }))}
+                value={block.slug}
+                onChange={(e) => setBlock(b => ({ ...b, slug: e.target.value }))}
                 className="input"
-                placeholder="/about-us"
+                placeholder="block-slug"
               />
             </div>
           </div>
@@ -478,13 +459,13 @@ export default function PageEditor() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status & Template */}
+          {/* Template */}
           <div className="card p-6 space-y-4">
             <div>
               <label className="label">Template</label>
               <div className="flex gap-2">
                 <select
-                  value={page.template_id || ''}
+                  value={block.template_id || ''}
                   onChange={(e) => handleTemplateChange(e.target.value)}
                   className="input flex-1"
                 >
@@ -505,90 +486,6 @@ export default function PageEditor() {
                 </button>
               </div>
             </div>
-            <div>
-              <label className="label">Status</label>
-              <select
-                value={page.status}
-                onChange={(e) => setPage(p => ({ ...p, status: e.target.value }))}
-                className="input"
-              >
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-          </div>
-
-          {/* SEO */}
-          <div className="card">
-            <button
-              onClick={() => setSeoOpen(!seoOpen)}
-              className="w-full px-6 py-4 flex items-center justify-between text-left"
-            >
-              <span className="font-semibold text-gray-900">SEO Settings</span>
-              {seoOpen ? (
-                <ChevronUp className="w-5 h-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-500" />
-              )}
-            </button>
-            {seoOpen && (
-              <div className="px-6 pb-6 space-y-4 border-t border-gray-200 pt-4">
-                <div>
-                  <label className="label">Meta Title</label>
-                  <input
-                    type="text"
-                    value={page.meta_title}
-                    onChange={(e) => setPage(p => ({ ...p, meta_title: e.target.value }))}
-                    className="input"
-                    maxLength={60}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {page.meta_title.length}/60 characters
-                  </p>
-                </div>
-                <div>
-                  <label className="label">Meta Description</label>
-                  <textarea
-                    value={page.meta_description}
-                    onChange={(e) => setPage(p => ({ ...p, meta_description: e.target.value }))}
-                    className="input"
-                    rows={3}
-                    maxLength={160}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    {page.meta_description.length}/160 characters
-                  </p>
-                </div>
-                <div>
-                  <label className="label">OG Image</label>
-                  {page.og_image && (
-                    <img src={page.og_image} alt="" className="max-w-full rounded-lg border mb-2" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => openMediaPicker('og_image')}
-                    className="btn btn-secondary w-full"
-                  >
-                    <Image className="w-4 h-4 mr-2" />
-                    {page.og_image ? 'Change' : 'Select'} OG Image
-                  </button>
-                </div>
-                <div>
-                  <label className="label">Robots</label>
-                  <select
-                    value={page.robots}
-                    onChange={(e) => setPage(p => ({ ...p, robots: e.target.value }))}
-                    className="input"
-                  >
-                    <option value="index, follow">Index, Follow</option>
-                    <option value="noindex, follow">No Index, Follow</option>
-                    <option value="index, nofollow">Index, No Follow</option>
-                    <option value="noindex, nofollow">No Index, No Follow</option>
-                  </select>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/connection.js';
 import { getAllMenus } from '../services/menuService.js';
+import { setupRenderBlock } from '../index.js';
 
 const router = Router();
 
@@ -119,7 +120,7 @@ router.get('*', async (req, res) => {
     if (shouldLogRender(req)) {
       logRender('request', { path: req.path, normalizedSlug: slug });
     }
-    
+
     // Get page data
     const pages = await query(`
       SELECT p.*, t.filename as template_filename
@@ -135,7 +136,7 @@ router.get('*', async (req, res) => {
         ids: pages.map(p => p.id)
       });
     }
-    
+
     if (!pages[0]) {
       // Try to render 404 template
       return res.status(404).render('pages/404.njk', {
@@ -143,9 +144,9 @@ router.get('*', async (req, res) => {
         site: await getSiteSettings()
       });
     }
-    
+
     const page = pages[0];
-    
+
     // Parse content JSON
     const content = parseJsonField(page.content) || {};
 
@@ -160,14 +161,18 @@ router.get('*', async (req, res) => {
         featuresLength: Array.isArray(features) ? features.length : 0
       });
     }
-    
+
     // Parse schema markup
     const schemaMarkup = parseJsonField(page.schema_markup);
-    
-    // Get site settings and menus
+
+    // Get site settings, menus, and blocks
     const site = await getSiteSettings();
     const menus = await getAllMenus();
-    
+    const blocksData = await getAllBlocks();
+
+    // Set up renderBlock function for this render
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
     // Build SEO data
     const seo = {
       title: page.meta_title || page.title,
@@ -185,7 +190,7 @@ router.get('*', async (req, res) => {
     };
 
     setRenderDebugHeaders(req, res, page, content);
-    
+
     // Render template
     res.render(page.template_filename, {
       page,
@@ -217,6 +222,21 @@ async function getSiteSettings() {
       site_name: 'WebWolf CMS',
       site_url: 'http://localhost:3000'
     };
+  }
+}
+
+// Helper to get all published blocks with template info
+async function getAllBlocks() {
+  try {
+    const blocks = await query(`
+      SELECT b.*, t.filename as template_filename
+      FROM blocks b
+      LEFT JOIN templates t ON b.template_id = t.id
+    `);
+    return blocks;
+  } catch (err) {
+    console.error('Error fetching blocks:', err);
+    return [];
   }
 }
 

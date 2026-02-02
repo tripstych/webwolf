@@ -109,9 +109,9 @@
       </article>
       
       {% if content.sidebar_content %}
-      <aside class="sidebar" 
-             data-cms-region="sidebar_content" 
-             data-cms-type="richtext" 
+      <aside class="sidebar"
+             data-cms-region="sidebar_content"
+             data-cms-type="richtext"
              data-cms-label="Sidebar Content">
         {{ content.sidebar_content | safe }}
       </aside>
@@ -119,4 +119,8 @@
     </div>
   </div>
 </section>
+
+<!-- Example: Render a block by its slug -->
+{# {{ renderBlock('my-cta-block') | safe }} #}
+
 {% endblock %}
