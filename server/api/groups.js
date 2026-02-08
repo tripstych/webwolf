@@ -5,26 +5,41 @@ import { requireAuth, requireEditor } from '../middleware/auth.js';
 const router = Router();
 
 /**
+ * Helper to recursively get group tree
+ */
+async function getGroupTree(parentId = null) {
+  const sql = parentId === null
+    ? 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id IS NULL ORDER BY name ASC'
+    : 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id = ? ORDER BY name ASC';
+
+  const params = parentId === null ? [] : [parentId];
+  const groups = await query(sql, params);
+
+  for (const group of groups) {
+    group.children = await getGroupTree(group.id);
+  }
+
+  return groups;
+}
+
+/**
  * Get all groups with optional parent filter
  */
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { parent_id } = req.query;
 
-    let sql = 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE 1=1';
-    const params = [];
+    let groups;
 
-    if (parent_id !== undefined) {
-      if (parent_id === 'null' || parent_id === '') {
-        sql += ' AND parent_id IS NULL';
-      } else {
-        sql += ' AND parent_id = ?';
-        params.push(parent_id);
-      }
+    // If fetching root groups, get full tree
+    if (!parent_id || parent_id === 'null' || parent_id === '') {
+      groups = await getGroupTree();
+    } else {
+      // Otherwise just get direct children
+      const sql = 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id = ? ORDER BY name ASC';
+      groups = await query(sql, [parent_id]);
     }
 
-    sql += ' ORDER BY name ASC';
-    const groups = await query(sql, params);
     res.json(groups);
   } catch (err) {
     console.error('Error fetching groups:', err);
