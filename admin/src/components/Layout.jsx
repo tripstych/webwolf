@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useContentTypes } from '../context/ContentTypesContext';
 import {
   LayoutDashboard,
   FileText,
@@ -13,24 +14,37 @@ import {
   X,
   ChevronDown,
   List,
-  Boxes
+  Boxes,
+  BookOpen,
+  Newspaper,
+  Package,
+  Users,
+  Briefcase,
+  Tag
 } from 'lucide-react';
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Pages', href: '/pages', icon: FileText },
-  { name: 'Templates', href: '/templates', icon: Layers },
-  { name: 'Media', href: '/media', icon: Image },
-  { name: 'Menus', href: '/menus', icon: List },
-  { name: 'Blocks', href: '/blocks', icon: Boxes },
-  { name: 'SEO', href: '/seo', icon: Search },
-  { name: 'Settings', href: '/settings', icon: Settings },
-];
+// Icon mapping for content types
+const ICON_MAP = {
+  'LayoutDashboard': LayoutDashboard,
+  'FileText': FileText,
+  'Boxes': Boxes,
+  'BookOpen': BookOpen,
+  'Newspaper': Newspaper,
+  'Package': Package,
+  'Users': Users,
+  'Briefcase': Briefcase,
+  'Layers': Layers,
+  'Image': Image,
+  'List': List,
+  'Search': Search,
+  'Settings': Settings
+};
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { contentTypes } = useContentTypes();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,6 +52,35 @@ export default function Layout({ children }) {
     await logout();
     navigate('/login');
   };
+
+  // Static navigation items (always shown)
+  const staticNavStart = [
+    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Products', href: '/products', icon: Package }
+  ];
+
+  const staticNavEnd = [
+    { name: 'Templates', href: '/templates', icon: Layers },
+    { name: 'Media', href: '/media', icon: Image },
+    { name: 'Menus', href: '/menus', icon: List },
+    { name: 'Groups', href: '/groups', icon: Tag },
+    { name: 'SEO', href: '/seo', icon: Search },
+    { name: 'Settings', href: '/settings', icon: Settings }
+  ];
+
+  // Dynamic content type navigation items
+  const contentTypeNav = contentTypes.map(type => ({
+    name: type.plural_label,
+    href: `/${type.name}`,
+    icon: ICON_MAP[type.icon] || FileText
+  }));
+
+  // Combine: Dashboard, content types, then static items
+  const navigation = [
+    ...staticNavStart,
+    ...contentTypeNav,
+    ...staticNavEnd
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
