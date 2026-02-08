@@ -225,7 +225,7 @@ router.post('/:id/content', requireAuth, async (req, res) => {
 /**
  * Remove content from a group
  */
-router.delete('/:id/content/:content_id', requireEditor, async (req, res) => {
+router.delete('/:id/content/:content_id', requireAuth, async (req, res) => {
   try {
     const { id, content_id } = req.params;
 
