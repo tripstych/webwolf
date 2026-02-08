@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
 
     const quantity = parseInt(qtyInput.value) || 1;
+    const originalText = 'Add to Cart';
 
     try {
       addToCartBtn.disabled = true;
@@ -83,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
       await window.cart.addItem(productId, selectedVariantId, quantity, selectedPrice);
 
       // Show success message
-      const originalText = addToCartBtn.textContent;
       addToCartBtn.textContent = '✓ Added to Cart';
       addToCartBtn.style.background = '#10b981';
 
