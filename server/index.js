@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import nunjucks from 'nunjucks';
 
-import apiRoutes from './api/index.js';
+import apiRoutes, { registerContentTypeApis } from './api/index.js';
 import publicRoutes from './render/public.js';
 import { initDb, query } from './db/connection.js';
 
@@ -115,7 +115,7 @@ app.use(session({
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use('/public', express.static(path.join(__dirname, '../public')));
+app.use('/', express.static(path.join(__dirname, '../public')));
 
 // Serve React admin in production
 if (process.env.NODE_ENV === 'production') {
@@ -127,6 +127,11 @@ if (process.env.NODE_ENV === 'production') {
 
 // API routes
 app.use('/api', apiRoutes);
+
+// Auto-load content type APIs based on template folders
+registerContentTypeApis(app).catch(err => {
+  console.error('Failed to auto-load content type APIs:', err);
+});
 
 // Public site routes (must be last)
 app.use('/', publicRoutes);
