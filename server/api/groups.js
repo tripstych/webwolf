@@ -80,7 +80,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 /**
  * Create a new group
  */
-router.post('/', requireEditor, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, parent_id } = req.body;
 
@@ -109,7 +109,7 @@ router.post('/', requireEditor, async (req, res) => {
 /**
  * Update a group
  */
-router.put('/:id', requireEditor, async (req, res) => {
+router.put('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, parent_id } = req.body;
@@ -149,7 +149,7 @@ router.put('/:id', requireEditor, async (req, res) => {
 /**
  * Delete a group
  */
-router.delete('/:id', requireEditor, async (req, res) => {
+router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -170,7 +170,7 @@ router.delete('/:id', requireEditor, async (req, res) => {
 /**
  * Add content to a group
  */
-router.post('/:id/content', requireEditor, async (req, res) => {
+router.post('/:id/content', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { content_id } = req.body;
@@ -224,6 +224,32 @@ router.delete('/:id/content/:content_id', requireEditor, async (req, res) => {
   } catch (err) {
     console.error('Error removing content from group:', err);
     res.status(500).json({ error: 'Failed to remove content from group' });
+  }
+});
+
+/**
+ * Get all groups (hierarchical with parent=null)
+ */
+router.get('/hierarchy', requireAuth, async (req, res) => {
+  try {
+    const groups = await query(`
+      WITH RECURSIVE group_tree AS (
+        SELECT id, parent_id, name, created_at, updated_at, 0 as level
+        FROM groups
+        WHERE parent_id IS NULL
+        UNION ALL
+        SELECT g.id, g.parent_id, g.name, g.created_at, g.updated_at, gt.level + 1
+        FROM groups g
+        JOIN group_tree gt ON g.parent_id = gt.id
+      )
+      SELECT * FROM group_tree
+      ORDER BY level, name
+    `);
+
+    res.json(groups);
+  } catch (err) {
+    console.error('Error fetching group hierarchy:', err);
+    res.status(500).json({ error: 'Failed to fetch groups' });
   }
 });
 
