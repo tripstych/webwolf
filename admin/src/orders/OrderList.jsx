@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function OrderList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,239 +59,231 @@ export default function OrderList() {
     });
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'shipped': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentBadgeColor = (status) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'paid': return 'bg-green-100 text-green-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const totalPages = Math.ceil(total / limit);
 
-  return (
-    <div className="content-container">
-      <div className="page-header">
-        <h1>Orders</h1>
-        <span className="order-count">{total} total</span>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
+    );
+  }
 
-      <div className="filters">
-        <input
-          type="text"
-          placeholder="Search by order number or email..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="search-input"
-        />
-
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
-          className="select-input"
-        >
-          <option value="">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="processing">Processing</option>
-          <option value="shipped">Shipped</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-
-        <select
-          value={paymentStatus}
-          onChange={(e) => {
-            setPaymentStatus(e.target.value);
-            setPage(1);
-          }}
-          className="select-input"
-        >
-          <option value="">All Payment Status</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="failed">Failed</option>
-          <option value="refunded">Refunded</option>
-        </select>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
+        <span className="text-sm text-gray-600">{total} total</span>
       </div>
 
       {error && (
-        <div className="alert alert-error">{error}</div>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
       )}
 
-      {loading ? (
-        <div className="loading">Loading orders...</div>
-      ) : orders.length === 0 ? (
-        <div className="empty-state">
-          <p>No orders found. {search || status ? 'Try adjusting your filters.' : 'No orders yet.'}</p>
+      <div className="card p-4 space-y-4">
+        <div className="flex gap-3 flex-wrap">
+          <input
+            type="text"
+            placeholder="Search by order number or email..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="input flex-1 min-w-[250px]"
+          />
+
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="input"
+          >
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <select
+            value={paymentStatus}
+            onChange={(e) => {
+              setPaymentStatus(e.target.value);
+              setPage(1);
+            }}
+            className="input"
+          >
+            <option value="">All Payment Status</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="failed">Failed</option>
+            <option value="refunded">Refunded</option>
+          </select>
+        </div>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="card p-12 text-center">
+          <p className="text-gray-500">
+            No orders found. {search || status ? 'Try adjusting your filters.' : 'No orders yet.'}
+          </p>
         </div>
       ) : (
         <>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order #</th>
-                <th>Customer</th>
-                <th>Date</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Payment</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(order => (
-                <tr key={order.id}>
-                  <td>
-                    <strong>{order.order_number}</strong>
-                  </td>
-                  <td>
-                    <div>{order.email}</div>
-                  </td>
-                  <td>
-                    {formatDate(order.created_at)}
-                  </td>
-                  <td>
-                    ${parseFloat(order.total).toFixed(2)}
-                  </td>
-                  <td>
-                    <span className={`badge badge-${order.status}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`badge badge-payment-${order.payment_status}`}>
-                      {order.payment_status}
-                    </span>
-                  </td>
-                  <td className="actions">
-                    <button
-                      className="btn btn-small btn-secondary"
-                      onClick={() => navigate(`/orders/${order.id}`)}
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Order #
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Payment
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(order => (
+                    <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {order.order_number}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {order.email}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {formatDate(order.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {formatCurrency(order.total)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(order.status)}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getPaymentBadgeColor(order.payment_status)}`}>
+                          {order.payment_status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <button
+                          onClick={() => navigate(`/orders/${order.id}`)}
+                          className="text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {totalPages > 1 && (
-            <div className="pagination">
+            <div className="flex items-center justify-center gap-2">
               <button
-                className="btn btn-small"
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
+                <ChevronLeft className="w-4 h-4" />
                 Previous
               </button>
 
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <button
-                    key={pageNum}
-                    className={`btn btn-small ${page === pageNum ? 'active' : ''}`}
-                    onClick={() => setPage(pageNum)}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                        page === pageNum
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
 
               <button
-                className="btn btn-small"
                 disabled={page === totalPages}
                 onClick={() => setPage(page + 1)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
         </>
       )}
-
-      <style>{`
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 2rem;
-        }
-
-        .order-count {
-          font-size: 0.875rem;
-          color: #666;
-          font-weight: normal;
-        }
-
-        .filters {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 2rem;
-          flex-wrap: wrap;
-        }
-
-        .search-input,
-        .select-input {
-          padding: 0.75rem;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 1rem;
-        }
-
-        .search-input {
-          flex: 1;
-          min-width: 250px;
-        }
-
-        .badge-pending { background: #fef3c7; color: #92400e; }
-        .badge-processing { background: #dbeafe; color: #1e40af; }
-        .badge-shipped { background: #d1fae5; color: #065f46; }
-        .badge-completed { background: #d1fae5; color: #065f46; }
-        .badge-cancelled { background: #fee2e2; color: #7f1d1d; }
-
-        .badge-payment-pending { background: #fef3c7; color: #92400e; }
-        .badge-payment-paid { background: #d1fae5; color: #065f46; }
-        .badge-payment-failed { background: #fee2e2; color: #7f1d1d; }
-        .badge-payment-refunded { background: #f3e8ff; color: #6b21a8; }
-
-        .actions {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .pagination {
-          display: flex;
-          gap: 0.5rem;
-          margin-top: 2rem;
-          justify-content: center;
-        }
-
-        .pagination .btn.active {
-          background: #3b82f6;
-          color: white;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem;
-          color: #666;
-        }
-
-        .loading {
-          text-align: center;
-          padding: 2rem;
-          color: #666;
-        }
-      `}</style>
     </div>
   );
 }

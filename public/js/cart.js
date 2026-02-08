@@ -39,6 +39,7 @@ class CartManager {
 
   /**
    * Sync cart with server via API
+   * Only overwrites local cart if server has more items
    */
   async syncWithServer() {
     try {
@@ -49,9 +50,18 @@ class CartManager {
 
       if (response.ok) {
         const serverCart = await response.json();
-        this.cart = serverCart;
-        this.saveToLocalStorage();
-        this.notify();
+
+        // Only update from server if it has items and local cart is empty
+        // This prevents empty server sessions from clearing the local cart
+        const localItemCount = this.cart.items.length;
+        const serverItemCount = (serverCart.items || []).length;
+
+        if (serverItemCount > 0 || localItemCount === 0) {
+          this.cart = serverCart;
+          this.saveToLocalStorage();
+          this.notify();
+        }
+        // If local has items and server is empty, keep local cart
       }
     } catch (err) {
       console.error('Failed to sync cart with server:', err);

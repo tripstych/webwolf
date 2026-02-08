@@ -53,33 +53,48 @@ export default function Layout({ children }) {
     navigate('/login');
   };
 
-  // Static navigation items (always shown)
-  const staticNavStart = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Products', href: '/products', icon: Package }
-  ];
-
-  const staticNavEnd = [
-    { name: 'Templates', href: '/templates', icon: Layers },
-    { name: 'Media', href: '/media', icon: Image },
-    { name: 'Menus', href: '/menus', icon: List },
-    { name: 'Groups', href: '/groups', icon: Tag },
-    { name: 'SEO', href: '/seo', icon: Search },
-    { name: 'Settings', href: '/settings', icon: Settings }
-  ];
-
-  // Dynamic content type navigation items
-  const contentTypeNav = contentTypes.map(type => ({
-    name: type.plural_label,
-    href: `/${type.name}`,
-    icon: ICON_MAP[type.icon] || FileText
-  }));
-
-  // Combine: Dashboard, content types, then static items
-  const navigation = [
-    ...staticNavStart,
-    ...contentTypeNav,
-    ...staticNavEnd
+  // Organize navigation by sections
+  const navigationSections = [
+    {
+      section: null,
+      items: [
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard }
+      ]
+    },
+    {
+      section: 'Store',
+      items: [
+        { name: 'Products', href: '/products', icon: Package },
+        { name: 'Orders', href: '/orders', icon: Briefcase },
+        { name: 'Customers', href: '/customers', icon: Users }
+      ]
+    },
+    {
+      section: 'Content',
+      items: [
+        { name: 'Pages', href: '/pages', icon: FileText },
+        { name: 'Blocks', href: '/blocks', icon: Boxes },
+        { name: 'Templates', href: '/templates', icon: Layers },
+        { name: 'Media', href: '/media', icon: Image },
+        { name: 'Menus', href: '/menus', icon: List },
+        { name: 'Groups', href: '/groups', icon: Tag },
+        ...contentTypes
+          .filter(type => !['products', 'pages', 'blocks', 'shop', 'shops'].includes(type.name))
+          .map(type => ({
+            name: type.plural_label,
+            href: `/${type.name}`,
+            icon: ICON_MAP[type.icon] || FileText
+          }))
+      ]
+    },
+    {
+      section: 'Settings',
+      items: [
+        { name: 'Users', href: '/users', icon: Users },
+        { name: 'SEO', href: '/seo', icon: Search },
+        { name: 'Configuration', href: '/settings', icon: Settings }
+      ]
+    }
   ];
 
   return (
@@ -113,25 +128,36 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
-              (item.href !== '/' && location.pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav className="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
+          {navigationSections.map((section, sectionIdx) => (
+            <div key={sectionIdx}>
+              {section.section && (
+                <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {section.section}
+                </h3>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.href ||
+                    (item.href !== '/' && location.pathname.startsWith(item.href));
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </aside>
 

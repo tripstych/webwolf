@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import pluralize from 'pluralize';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = path.join(__dirname, '../../templates');
@@ -89,6 +90,44 @@ function formatLabel(name) {
   return name
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Extract content type from template filename
+ * Examples:
+ *   "pages/homepage.njk" → "pages"
+ *   "blog/post.njk" → "blog"
+ *   "products/single.njk" → "products"
+ */
+export function extractContentType(filename) {
+  const parts = filename.split('/');
+  return parts[0]; // First folder is content type
+}
+
+/**
+ * Format content type name to label
+ * Examples:
+ *   "blog" → "Blog"
+ *   "products" → "Products"
+ */
+function formatContentTypeLabel(name) {
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
+
+/**
+ * Get default icon based on content type name
+ */
+function getDefaultIcon(contentType) {
+  const iconMap = {
+    'pages': 'FileText',
+    'blocks': 'Boxes',
+    'blog': 'BookOpen',
+    'news': 'Newspaper',
+    'products': 'Package',
+    'team': 'Users',
+    'portfolio': 'Briefcase'
+  };
+  return iconMap[contentType] || 'FileText';
 }
 
 /**
@@ -184,20 +223,64 @@ export async function scanPageTemplates() {
 }
 
 /**
+ * Auto-register content types discovered from templates
+ */
+async function registerContentTypes(queryFn, templates) {
+  const discoveredTypes = new Set();
+
+  templates.forEach(template => {
+    const contentType = extractContentType(template.filename);
+    discoveredTypes.add(contentType);
+  });
+
+  for (const typeName of discoveredTypes) {
+    // Check if content type already exists
+    const existing = await queryFn(
+      'SELECT id FROM content_types WHERE name = ?',
+      [typeName]
+    );
+
+    if (existing.length === 0) {
+      // Create new content type with sensible defaults
+      const label = formatContentTypeLabel(typeName);
+      const pluralLabel = pluralize.plural(label);
+
+      await queryFn(
+        `INSERT INTO content_types (name, label, plural_label, icon, has_status, has_seo)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          typeName,
+          label,
+          pluralLabel,
+          getDefaultIcon(typeName),
+          typeName !== 'blocks', // blocks don't have status
+          typeName !== 'blocks'   // all non-block types have SEO
+        ]
+      );
+    }
+  }
+}
+
+/**
  * Sync templates from filesystem to database
  */
-export async function syncTemplatesToDb(query) {
+export async function syncTemplatesToDb(queryFn) {
   const templates = await scanTemplates();
-  
+
   for (const template of templates) {
-    await query(
-      `INSERT INTO templates (name, filename, regions) 
-       VALUES (?, ?, ?) 
-       ON DUPLICATE KEY UPDATE regions = VALUES(regions), name = VALUES(name)`,
-      [template.name, template.filename, JSON.stringify(template.regions)]
+    const contentType = extractContentType(template.filename);
+
+    await queryFn(
+      `INSERT INTO templates (name, filename, regions, content_type)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE regions = VALUES(regions), name = VALUES(name), content_type = VALUES(content_type)`,
+      [template.name, template.filename, JSON.stringify(template.regions), contentType]
     );
   }
-  
+
+  // Auto-discover and register new content types
+  await registerContentTypes(queryFn, templates);
+
   return templates;
 }
 

@@ -1,0 +1,409 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="checkout-container">
+  <h1>Checkout</h1>
+
+  <div class="checkout-wrapper">
+    {# Optional: Customer Login Block #}
+    {% include "partials/customer-login-form.njk" %}
+
+    <form id="checkout-form" class="checkout-form">
+      {# Step 1: Contact Information #}
+      <section class="checkout-step" data-step="1">
+        <h2>Contact Information</h2>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="you@example.com"
+          >
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="checkoutManager.goToStep(2)">
+          Continue to Shipping
+        </button>
+      </section>
+
+      {# Step 2: Shipping Address #}
+      <section class="checkout-step hidden" data-step="2">
+        <h2>Shipping Address</h2>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name">First Name *</label>
+            <input type="text" id="first_name" name="first_name" required>
+          </div>
+          <div class="form-group">
+            <label for="last_name">Last Name *</label>
+            <input type="text" id="last_name" name="last_name" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="address1">Address *</label>
+          <input type="text" id="address1" name="address1" required placeholder="Street address">
+        </div>
+
+        <div class="form-group">
+          <label for="address2">Apartment, suite, etc. (optional)</label>
+          <input type="text" id="address2" name="address2" placeholder="Apartment or suite">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="city">City *</label>
+            <input type="text" id="city" name="city" required>
+          </div>
+          <div class="form-group">
+            <label for="province">State / Province *</label>
+            <input type="text" id="province" name="province" required>
+          </div>
+          <div class="form-group">
+            <label for="postal_code">Postal Code *</label>
+            <input type="text" id="postal_code" name="postal_code" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="country">Country *</label>
+          <select id="country" name="country" required>
+            <option value="">Select country</option>
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="GB">United Kingdom</option>
+            <option value="AU">Australia</option>
+            <option value="DE">Germany</option>
+            <option value="FR">France</option>
+            <option value="JP">Japan</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number (optional)</label>
+          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 000-0000">
+        </div>
+
+        <div class="form-buttons">
+          <button type="button" class="btn btn-secondary" onclick="checkoutManager.goToStep(1)">
+            Back
+          </button>
+          <button type="button" class="btn btn-primary" onclick="checkoutManager.goToStep(3)">
+            Continue to Payment
+          </button>
+        </div>
+      </section>
+
+      {# Step 3: Payment #}
+      <section class="checkout-step hidden" data-step="3">
+        <h2>Payment Method</h2>
+
+        <div class="payment-methods">
+          <label class="payment-option">
+            <input type="radio" name="payment_method" value="stripe" checked>
+            <span>Credit Card</span>
+          </label>
+          <label class="payment-option">
+            <input type="radio" name="payment_method" value="paypal">
+            <span>PayPal</span>
+          </label>
+        </div>
+
+        {# Stripe Payment Form #}
+        <div id="stripe-payment" class="payment-form">
+          <div id="card-element" class="card-element"></div>
+          <div id="card-errors" class="card-errors"></div>
+        </div>
+
+        {# PayPal Payment Form #}
+        <div id="paypal-payment" class="payment-form hidden">
+          <div id="paypal-button-container"></div>
+        </div>
+
+        <div class="form-buttons">
+          <button type="button" class="btn btn-secondary" onclick="checkoutManager.goToStep(2)">
+            Back
+          </button>
+          <button type="button" id="place-order-btn" class="btn btn-primary" onclick="checkoutManager.placeOrder()">
+            Place Order
+          </button>
+        </div>
+      </section>
+    </form>
+
+    {# Order Summary Sidebar #}
+    <aside class="order-summary">
+      <h3>Order Summary</h3>
+      <div id="summary-items" class="summary-items">
+        <div class="loading">Loading cart...</div>
+      </div>
+      <div class="summary-totals">
+        <div class="total-line">
+          <span>Subtotal</span>
+          <span id="summary-subtotal">$0.00</span>
+        </div>
+        <div class="total-line">
+          <span>Shipping</span>
+          <span id="summary-shipping">$0.00</span>
+        </div>
+        <div class="total-line">
+          <span>Tax</span>
+          <span id="summary-tax">$0.00</span>
+        </div>
+        <div class="total-line total">
+          <span>Total</span>
+          <span id="summary-total">$0.00</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="/js/cart.js"></script>
+<script>
+  // Fetch Stripe public key from public settings endpoint
+  async function loadStripeKey() {
+    try {
+      const response = await fetch('/api/settings/public');
+      const settings = await response.json();
+      window.STRIPE_PUBLIC_KEY = settings.stripe_public_key;
+      console.log('Stripe public key loaded:', !!window.STRIPE_PUBLIC_KEY);
+    } catch (err) {
+      console.error('Failed to load Stripe key:', err);
+    }
+  }
+
+  // Load Stripe key before anything else
+  loadStripeKey();
+</script>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="/js/stripe-payment.js"></script>
+<script src="/js/checkout.js"></script>
+
+<style>
+  .checkout-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .checkout-wrapper {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .checkout-wrapper {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .checkout-form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .checkout-step {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .checkout-step.hidden {
+    display: none;
+  }
+
+  .checkout-step h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .payment-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .payment-option {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .payment-option:hover {
+    border-color: #3b82f6;
+    background: #f0f9ff;
+  }
+
+  .payment-option input {
+    width: auto;
+    margin-right: 0.75rem;
+  }
+
+  .payment-form {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .payment-form.hidden {
+    display: none;
+  }
+
+  .card-element {
+    padding: 0.75rem;
+  }
+
+  .card-errors {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+
+  .form-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .form-buttons .btn {
+    flex: 1;
+  }
+
+  .order-summary {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+  }
+
+  .order-summary h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  .summary-items {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+  }
+
+  .summary-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .total-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+  }
+
+  .total-line.total {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  .btn-primary:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: #f3f4f6;
+    color: #333;
+    border: 1px solid #ddd;
+  }
+
+  .btn-secondary:hover {
+    background: #e5e7eb;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 1rem;
+    color: #666;
+  }
+</style>
+{% endblock %}

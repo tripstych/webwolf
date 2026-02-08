@@ -1,0 +1,108 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Cursor styles */
+.cursor-se-resize {
+  cursor: se-resize;
+}
+
+.cursor-ew-resize {
+  cursor: ew-resize;
+}
+
+.cursor-ns-resize {
+  cursor: ns-resize;
+}
+
+/* Component styles */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.3;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 16px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+/* Grid component */
+.card-grid {
+  display: grid;
+  gap: 20px;
+  grid-auto-flow: row;
+}
+
+/* Repeater styles */
+.repeater-item {
+  padding: 10px;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}

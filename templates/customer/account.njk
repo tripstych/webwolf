@@ -1,0 +1,359 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="account-container">
+  <div class="account-header">
+    <h1>My Account</h1>
+    <button id="logout-btn" class="btn btn-secondary">Sign Out</button>
+  </div>
+
+  <div class="account-content">
+    {# Profile Section #}
+    <div class="account-section">
+      <h2>Profile Information</h2>
+      <div id="profile-content" class="loading">Loading...</div>
+    </div>
+
+    {# Orders Section #}
+    <div class="account-section">
+      <h2>Recent Orders</h2>
+      <div id="orders-content" class="loading">Loading...</div>
+    </div>
+
+    {# Password Section #}
+    <div class="account-section">
+      <h2>Change Password</h2>
+      <form id="password-form" class="form">
+        <div class="form-group">
+          <label for="current-password">Current Password</label>
+          <input type="password" id="current-password" name="current-password" required class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label for="new-password">New Password</label>
+          <input type="password" id="new-password" name="new-password" required class="form-input">
+          <p class="form-hint">Minimum 6 characters</p>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-password">Confirm Password</label>
+          <input type="password" id="confirm-password" name="confirm-password" required class="form-input">
+        </div>
+
+        <div id="password-error" class="error-message hidden"></div>
+        <div id="password-success" class="success-message hidden"></div>
+
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Load customer profile
+  async function loadProfile() {
+    try {
+      const response = await fetch('/api/customer-auth/me', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          window.location.href = '/customer/login';
+          return;
+        }
+        throw new Error('Failed to load profile');
+      }
+
+      const customer = await response.json();
+      const profileDiv = document.getElementById('profile-content');
+
+      profileDiv.innerHTML = `
+        <div class="profile-info">
+          <div class="info-item">
+            <label>Name</label>
+            <p>${customer.firstName || ''} ${customer.lastName || ''}</p>
+          </div>
+          <div class="info-item">
+            <label>Email</label>
+            <p>${customer.email}</p>
+          </div>
+          <div class="info-item">
+            <label>Phone</label>
+            <p>${customer.phone || 'Not provided'}</p>
+          </div>
+          <div class="info-item">
+            <label>Member Since</label>
+            <p>${new Date(customer.createdAt).toLocaleDateString()}</p>
+          </div>
+          <button id="edit-profile-btn" class="btn btn-secondary">Edit Profile</button>
+        </div>
+      `;
+
+      document.getElementById('edit-profile-btn').addEventListener('click', () => {
+        alert('Profile editing coming soon!');
+      });
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      document.getElementById('profile-content').innerHTML = '<p class="error">Failed to load profile</p>';
+    }
+  }
+
+  // Load customer orders
+  async function loadOrders() {
+    try {
+      const ordersDiv = document.getElementById('orders-content');
+      ordersDiv.innerHTML = '<p>Orders feature coming soon!</p>';
+      // TODO: Implement orders endpoint
+    } catch (err) {
+      console.error('Error loading orders:', err);
+      document.getElementById('orders-content').innerHTML = '<p class="error">Failed to load orders</p>';
+    }
+  }
+
+  // Handle logout
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    try {
+      await fetch('/api/customer-auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Logout error:', err);
+      alert('Logout failed');
+    }
+  });
+
+  // Handle password change
+  document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    const errorDiv = document.getElementById('password-error');
+    const successDiv = document.getElementById('password-success');
+
+    errorDiv.classList.add('hidden');
+    successDiv.classList.add('hidden');
+
+    if (newPassword.length < 6) {
+      errorDiv.textContent = 'New password must be at least 6 characters';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      errorDiv.textContent = 'Passwords do not match';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/customer-auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to change password');
+      }
+
+      successDiv.textContent = 'Password changed successfully!';
+      successDiv.classList.remove('hidden');
+      document.getElementById('password-form').reset();
+
+      setTimeout(() => {
+        successDiv.classList.add('hidden');
+      }, 3000);
+    } catch (err) {
+      errorDiv.textContent = err.message;
+      errorDiv.classList.remove('hidden');
+    }
+  });
+
+  // Load content on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    loadProfile();
+    loadOrders();
+  });
+</script>
+
+<style>
+  .account-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .account-header h1 {
+    margin: 0;
+    font-size: 2rem;
+  }
+
+  .account-content {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .account-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .account-section h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    color: #1f2937;
+  }
+
+  .profile-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .info-item label {
+    display: block;
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .info-item p {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1rem;
+  }
+
+  .form {
+    max-width: 500px;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-hint {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+
+  .error-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .success-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .loading {
+    text-align: center;
+    color: #6b7280;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+  }
+
+  .btn-secondary:hover {
+    background: #e5e7eb;
+  }
+
+  @media (max-width: 640px) {
+    .account-container {
+      padding: 1rem;
+    }
+
+    .account-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .profile-info {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}

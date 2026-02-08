@@ -10,6 +10,7 @@ import nunjucks from 'nunjucks';
 import apiRoutes, { registerContentTypeApis } from './api/index.js';
 import publicRoutes from './render/public.js';
 import { initDb, query } from './db/connection.js';
+import registerTemplateExtensions from '../templates/pages/extensions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -53,6 +54,9 @@ nunjucksEnv.addFilter('date', (date, format = 'YYYY-MM-DD') => {
     .replace('M', d.getMonth() + 1)
     .replace('D', d.getDate());
 });
+
+// Load template extensions (product embeds, etc.)
+registerTemplateExtensions(nunjucksEnv, query);
 
 // Store nunjucks environment for use in routes
 app.locals.nunjucksEnv = nunjucksEnv;
@@ -99,6 +103,23 @@ app.use(cors({
   origin: process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : false,
   credentials: true
 }));
+
+// Capture raw body for webhook signature verification (must be before JSON parsing)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/webhooks/')) {
+    let rawBody = '';
+    req.on('data', chunk => {
+      rawBody += chunk.toString('utf8');
+    });
+    req.on('end', () => {
+      req.rawBody = rawBody;
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

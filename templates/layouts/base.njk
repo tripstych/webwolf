@@ -211,7 +211,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p>&copy; {{ "now" | date("Y") }} {{ site.site_name }}. All rights reserved.</p>
+      <p>&copy; <script>document.write(new Date().getFullYear());</script><noscript>2024</noscript> {{ site.site_name }}. All rights reserved.</p>
     </div>
   </footer>
 

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+dist/
+build/
+
+# Misc
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+*.json.backup
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Database
+db/*.json

@@ -1,0 +1,424 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="confirmation-container">
+  {% if order %}
+  <div class="confirmation-content">
+    <div class="success-badge">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+
+    <h1>Order Confirmed!</h1>
+    <p class="subtitle">Thank you for your purchase. Your order has been received and is being processed.</p>
+
+    <div class="order-info">
+      <div class="info-block">
+        <h3>Order Number</h3>
+        <p class="order-number">{{ order.order_number }}</p>
+      </div>
+
+      <div class="info-block">
+        <h3>Order Date</h3>
+        <p id="order-date">Loading...</p>
+      </div>
+
+      <div class="info-block">
+        <h3>Total Amount</h3>
+        <p class="amount">${{ order.total | round(2) }}</p>
+      </div>
+
+      <div class="info-block">
+        <h3>Payment Status</h3>
+        <span class="badge badge-{{ order.payment_status }}">{{ order.payment_status | capitalize }}</span>
+      </div>
+    </div>
+
+    <div class="order-details">
+      <h2>Order Details</h2>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in orderItems %}
+          <tr>
+            <td>
+              <strong>{{ item.product_title }}</strong>
+              {% if item.variant_title %}<div class="variant">{{ item.variant_title }}</div>{% endif %}
+            </td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.price | round(2) }}</td>
+            <td>${{ item.subtotal | round(2) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>${{ order.subtotal | round(2) }}</span>
+        </div>
+        {% if order.tax > 0 %}
+        <div class="summary-row">
+          <span>Tax</span>
+          <span>${{ order.tax | round(2) }}</span>
+        </div>
+        {% endif %}
+        {% if order.shipping > 0 %}
+        <div class="summary-row">
+          <span>Shipping</span>
+          <span>${{ order.shipping | round(2) }}</span>
+        </div>
+        {% endif %}
+        <div class="summary-row total">
+          <span>Total</span>
+          <span>${{ order.total | round(2) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="shipping-info">
+      <h2>Shipping Address</h2>
+      <address>
+        {% if order.shipping_address %}
+          {{ order.shipping_address.first_name }} {{ order.shipping_address.last_name }}<br>
+          {{ order.shipping_address.address1 }}
+          {% if order.shipping_address.address2 %}<br>{{ order.shipping_address.address2 }}{% endif %}<br>
+          {{ order.shipping_address.city }}, {{ order.shipping_address.province }} {{ order.shipping_address.postal_code }}<br>
+          {{ order.shipping_address.country }}
+        {% else %}
+          Order address not available
+        {% endif %}
+      </address>
+
+      {% if order.tracking_number %}
+      <div class="tracking-info">
+        <h3>Tracking Number</h3>
+        <p>{{ order.tracking_number }}</p>
+        <p class="text-muted">Tracking information will be updated as your order is shipped.</p>
+      </div>
+      {% else %}
+      <p class="text-muted">Shipping confirmation will be sent to {{ order.email }} once your order ships.</p>
+      {% endif %}
+    </div>
+
+    <div class="next-steps">
+      <h2>What's Next?</h2>
+      <ul>
+        <li>A confirmation email has been sent to <strong>{{ order.email }}</strong></li>
+        <li>Your order number is <strong>{{ order.order_number }}</strong> - save this for your records</li>
+        <li>You'll receive tracking information via email once your order ships</li>
+        <li>Questions? <a href="/contact">Contact our support team</a></li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <a href="/products" class="btn btn-primary">Continue Shopping</a>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="confirmation-content">
+    <div class="error-message">
+      <h2>Order Not Found</h2>
+      <p>We couldn't find your order. Please check the URL and try again.</p>
+      <a href="/products" class="btn btn-primary">Return to Shop</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  // Format order date
+  const orderDateEl = document.getElementById('order-date');
+  if (orderDateEl) {
+    const dateString = '{{ order.created_at }}';
+    const date = new Date(dateString);
+    const formatted = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    orderDateEl.textContent = formatted;
+  }
+</script>
+
+<style>
+  .confirmation-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+  }
+
+  .confirmation-content {
+    text-align: center;
+  }
+
+  .success-badge {
+    width: 80px;
+    height: 80px;
+    background: #10b981;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+  }
+
+  .success-badge svg {
+    width: 50px;
+    height: 50px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 1.125rem;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+
+  .order-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 8px;
+  }
+
+  .info-block h3 {
+    font-size: 0.875rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .info-block p {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 500;
+  }
+
+  .order-number {
+    font-family: monospace;
+    color: #3b82f6;
+  }
+
+  .amount {
+    color: #10b981;
+  }
+
+  .order-details {
+    text-align: left;
+    margin-bottom: 3rem;
+  }
+
+  .order-details h2,
+  .shipping-info h2,
+  .next-steps h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+  }
+
+  .items-table th {
+    text-align: left;
+    padding: 0.75rem;
+    background: #f3f4f6;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  .items-table td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .items-table .variant {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.25rem;
+  }
+
+  .summary {
+    background: #f9fafb;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+  }
+
+  .summary-row.total {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .shipping-info {
+    background: #f0f9ff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #bfdbfe;
+    margin-bottom: 2rem;
+    text-align: left;
+  }
+
+  address {
+    font-style: normal;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .tracking-info {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #bfdbfe;
+  }
+
+  .text-muted {
+    color: #666;
+    font-size: 0.875rem;
+  }
+
+  .next-steps {
+    text-align: left;
+    background: #fef3c7;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #fcd34d;
+    margin-bottom: 2rem;
+  }
+
+  .next-steps ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .next-steps li {
+    padding: 0.5rem 0;
+  }
+
+  .next-steps a {
+    color: #3b82f6;
+    text-decoration: none;
+  }
+
+  .next-steps a:hover {
+    text-decoration: underline;
+  }
+
+  .error-message {
+    background: #fee2e2;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+  }
+
+  .error-message h2 {
+    color: #dc2626;
+    margin-bottom: 1rem;
+  }
+
+  .actions {
+    margin-top: 2rem;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .badge-pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .badge-paid {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .badge-failed {
+    background: #fee2e2;
+    color: #7f1d1d;
+  }
+
+  .badge-refunded {
+    background: #f3e8ff;
+    color: #6b21a8;
+  }
+
+  @media (max-width: 600px) {
+    .confirmation-container {
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+    }
+
+    .items-table {
+      font-size: 0.875rem;
+    }
+
+    .items-table th,
+    .items-table td {
+      padding: 0.5rem;
+    }
+  }
+</style>
+{% endblock %}

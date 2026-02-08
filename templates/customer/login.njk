@@ -1,0 +1,221 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h1>Login to Your Account</h1>
+    <p class="auth-subtitle">Sign in to access your orders and account information</p>
+
+    <div class="login-wrapper">
+      {% include "partials/customer-login-form.njk" %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .auth-container {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .auth-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .auth-card h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+  }
+
+  .auth-subtitle {
+    color: #6b7280;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+  }
+
+  .auth-form {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .error-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .success-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .btn-block {
+    width: 100%;
+  }
+
+  .auth-links {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-links a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .auth-links a:hover {
+    text-decoration: underline;
+  }
+
+  .auth-footer {
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
+
+  .auth-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .auth-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .auth-container {
+      padding: 1rem;
+    }
+
+    .auth-card {
+      padding: 1.5rem;
+    }
+
+    .auth-card h1 {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<script>
+  // Override the login form redirect to go to customer account after login
+  document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('customer-login-form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById('customer-email').value;
+        const password = document.getElementById('customer-password').value;
+        const errorDiv = document.getElementById('customer-login-error');
+        const successDiv = document.getElementById('customer-login-success');
+
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+
+        try {
+          const response = await fetch('/api/customer-auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email, password })
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Login failed');
+          }
+
+          successDiv.textContent = 'Login successful! Redirecting...';
+          successDiv.classList.remove('hidden');
+
+          // Redirect to account page instead of reloading
+          setTimeout(() => {
+            window.location.href = '/customer/account';
+          }, 1500);
+        } catch (err) {
+          errorDiv.textContent = err.message;
+          errorDiv.classList.remove('hidden');
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

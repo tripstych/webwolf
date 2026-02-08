@@ -166,6 +166,346 @@ router.get('/checkout', async (req, res) => {
   }
 });
 
+// Order confirmation page (special route)
+router.get('/order-confirmation/:orderNumber', async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    // Format order number with # prefix for database lookup
+    const formattedOrderNumber = orderNumber.startsWith('#') ? orderNumber : `#${orderNumber}`;
+
+    // Get order from database
+    const orders = await query(
+      'SELECT * FROM orders WHERE order_number = ?',
+      [formattedOrderNumber]
+    );
+
+    if (!orders[0]) {
+      return res.status(404).render('pages/404.njk', {
+        title: 'Order Not Found',
+        site
+      });
+    }
+
+    const order = orders[0];
+
+    // Parse JSON address fields
+    try {
+      if (typeof order.shipping_address === 'string') {
+        order.shipping_address = JSON.parse(order.shipping_address);
+      }
+      if (typeof order.billing_address === 'string') {
+        order.billing_address = JSON.parse(order.billing_address);
+      }
+    } catch (e) {
+      console.warn('Failed to parse order addresses:', e);
+    }
+
+    // Get order items
+    const orderItems = await query(
+      'SELECT * FROM order_items WHERE order_id = ?',
+      [order.id]
+    );
+
+    res.render('shop/order-confirmation.njk', {
+      page: { title: 'Order Confirmation', slug: `/order-confirmation/${orderNumber}` },
+      seo: {
+        title: 'Order Confirmation - ' + site.site_name,
+        description: 'Your order has been confirmed',
+        robots: 'noindex, follow'
+      },
+      order,
+      orderItems,
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Order confirmation page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Customer login page (both /customer/login and /customers/login)
+router.get('/customer/login', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/login.njk', {
+      page: { title: 'Login', slug: '/customer/login' },
+      seo: {
+        title: 'Login - ' + site.site_name,
+        description: 'Login to your account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Login page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Alias for /customers/login (plural)
+router.get('/customers/login', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/login.njk', {
+      page: { title: 'Login', slug: '/customer/login' },
+      seo: {
+        title: 'Login - ' + site.site_name,
+        description: 'Login to your account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Login page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Customer register page
+router.get('/customer/register', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/register.njk', {
+      page: { title: 'Register', slug: '/customer/register' },
+      seo: {
+        title: 'Register - ' + site.site_name,
+        description: 'Create a new account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Register page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Alias for /customers/register (plural)
+router.get('/customers/register', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/register.njk', {
+      page: { title: 'Register', slug: '/customer/register' },
+      seo: {
+        title: 'Register - ' + site.site_name,
+        description: 'Create a new account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Register page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Customer account page
+router.get('/customer/account', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/account.njk', {
+      page: { title: 'My Account', slug: '/customer/account' },
+      seo: {
+        title: 'My Account - ' + site.site_name,
+        description: 'Manage your account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Account page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Alias for /customers/account (plural)
+router.get('/customers/account', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/account.njk', {
+      page: { title: 'My Account', slug: '/customer/account' },
+      seo: {
+        title: 'My Account - ' + site.site_name,
+        description: 'Manage your account',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Account page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Customer forgot password page
+router.get('/customer/forgot-password', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/forgot-password.njk', {
+      page: { title: 'Forgot Password', slug: '/customer/forgot-password' },
+      seo: {
+        title: 'Forgot Password - ' + site.site_name,
+        description: 'Reset your password',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Forgot password page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Alias for /customers/forgot-password (plural)
+router.get('/customers/forgot-password', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/forgot-password.njk', {
+      page: { title: 'Forgot Password', slug: '/customer/forgot-password' },
+      seo: {
+        title: 'Forgot Password - ' + site.site_name,
+        description: 'Reset your password',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Forgot password page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Customer reset password page (with token)
+router.get('/customer/reset-password/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/reset-password.njk', {
+      token,
+      page: { title: 'Reset Password', slug: '/customer/reset-password' },
+      seo: {
+        title: 'Reset Password - ' + site.site_name,
+        description: 'Reset your password',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Reset password page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Alias for /customers/reset-password/:token (plural)
+router.get('/customers/reset-password/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('customer/reset-password.njk', {
+      token,
+      page: { title: 'Reset Password', slug: '/customer/reset-password' },
+      seo: {
+        title: 'Reset Password - ' + site.site_name,
+        description: 'Reset your password',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Reset password page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
 // Render pages and other content types
 router.get('*', async (req, res) => {
   try {
@@ -221,7 +561,7 @@ router.get('*', async (req, res) => {
         const moduleContent = await query(`
           SELECT c.id, c.module, c.slug, c.title, COALESCE(c.data, '{}') as data
           FROM content c
-          WHERE c.module = ?
+          WHERE c.module = ? AND c.slug IS NOT NULL
           ORDER BY c.title ASC
         `, [module]);
 

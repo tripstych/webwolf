@@ -22,6 +22,10 @@ import OrderList from './orders/OrderList';
 import OrderDetail from './orders/OrderDetail';
 import GroupList from './groups/GroupList';
 import GroupEditor from './groups/GroupEditor';
+import UserList from './users/UserList';
+import UserEditor from './users/UserEditor';
+import CustomerList from './customers/CustomerList';
+import CustomerDetail from './customers/CustomerDetail';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -73,6 +77,11 @@ function App() {
                 <Route path="/groups" element={<GroupList />} />
                 <Route path="/groups/new" element={<GroupEditor />} />
                 <Route path="/groups/:id" element={<GroupEditor />} />
+                <Route path="/users" element={<UserList />} />
+                <Route path="/users/new" element={<UserEditor />} />
+                <Route path="/users/:id" element={<UserEditor />} />
+                <Route path="/customers" element={<CustomerList />} />
+                <Route path="/customers/:id" element={<CustomerDetail />} />
 
                 {/* Dynamic content type routes */}
                 {contentTypes.map(type => (

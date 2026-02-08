@@ -4,7 +4,30 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get all settings
+// Get public settings (no auth required)
+// These are settings that are safe to expose to the frontend
+router.get('/public', async (req, res) => {
+  try {
+    const settings = await query('SELECT setting_key, setting_value FROM settings');
+
+    // Only expose safe settings
+    const publicSettings = {};
+    const safeKeys = ['stripe_public_key', 'site_name', 'site_tagline', 'site_url', 'google_analytics_id'];
+
+    settings.forEach(s => {
+      if (safeKeys.includes(s.setting_key)) {
+        publicSettings[s.setting_key] = s.setting_value;
+      }
+    });
+
+    res.json(publicSettings);
+  } catch (err) {
+    console.error('Get public settings error:', err);
+    res.status(500).json({ error: 'Failed to get settings' });
+  }
+});
+
+// Get all settings (admin only)
 router.get('/', requireAuth, async (req, res) => {
   try {
     const settings = await query('SELECT setting_key, setting_value FROM settings');

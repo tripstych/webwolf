@@ -1,0 +1,310 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="auth-container">
+  <div class="auth-card">
+    <h1>Create an Account</h1>
+    <p class="auth-subtitle">Join us to track orders and save your information</p>
+
+    <form id="register-form" class="auth-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input
+            type="text"
+            id="firstName"
+            name="firstName"
+            placeholder="John"
+            class="form-input"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            placeholder="Doe"
+            class="form-input"
+          >
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address *</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          required
+          placeholder="your@email.com"
+          class="form-input"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password *</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          placeholder="••••••••"
+          class="form-input"
+        >
+        <p class="form-hint">Minimum 6 characters</p>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password *</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          name="confirmPassword"
+          required
+          placeholder="••••••••"
+          class="form-input"
+        >
+      </div>
+
+      <div id="error-message" class="error-message hidden"></div>
+      <div id="success-message" class="success-message hidden"></div>
+
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Already have an account? <a href="/customer/login">Sign in</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const errorDiv = document.getElementById('error-message');
+    const successDiv = document.getElementById('success-message');
+
+    errorDiv.classList.add('hidden');
+    successDiv.classList.add('hidden');
+
+    // Validate
+    if (!email || !password) {
+      errorDiv.textContent = 'Email and password are required';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    if (password.length < 6) {
+      errorDiv.textContent = 'Password must be at least 6 characters';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      errorDiv.textContent = 'Passwords do not match';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/customer-auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          firstName: firstName || null,
+          lastName: lastName || null
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      const data = await response.json();
+      successDiv.textContent = 'Registration successful! Redirecting to login...';
+      successDiv.classList.remove('hidden');
+
+      setTimeout(() => {
+        window.location.href = '/customer/login';
+      }, 2000);
+    } catch (err) {
+      errorDiv.textContent = err.message;
+      errorDiv.classList.remove('hidden');
+    }
+  });
+</script>
+
+<style>
+  .auth-container {
+    min-height: calc(100vh - 200px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  }
+
+  .auth-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 450px;
+  }
+
+  .auth-card h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    color: #1f2937;
+  }
+
+  .auth-subtitle {
+    color: #6b7280;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+  }
+
+  .auth-form {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-hint {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+
+  .error-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .success-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .btn-block {
+    width: 100%;
+  }
+
+  .auth-footer {
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
+
+  .auth-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .auth-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .auth-container {
+      padding: 1rem;
+    }
+
+    .auth-card {
+      padding: 1.5rem;
+    }
+
+    .auth-card h1 {
+      font-size: 1.5rem;
+    }
+
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}

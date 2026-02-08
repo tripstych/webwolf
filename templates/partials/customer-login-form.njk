@@ -1,0 +1,225 @@
+{# Reusable customer login form partial #}
+{# Usage: {% include "partials/customer-login-form.njk" %} #}
+
+<div class="customer-login-form">
+  <h3>Returning Customer?</h3>
+  <p class="login-subtitle">Sign in to your account</p>
+
+  <form id="customer-login-form" class="login-form">
+    <div class="form-group">
+      <label for="customer-email">Email Address</label>
+      <input
+        type="email"
+        id="customer-email"
+        name="email"
+        required
+        placeholder="your@email.com"
+        class="form-input"
+      >
+    </div>
+
+    <div class="form-group">
+      <label for="customer-password">Password</label>
+      <input
+        type="password"
+        id="customer-password"
+        name="password"
+        required
+        placeholder="••••••••"
+        class="form-input"
+      >
+    </div>
+
+    <div id="customer-login-error" class="error-message hidden"></div>
+    <div id="customer-login-success" class="success-message hidden"></div>
+
+    <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+  </form>
+
+  <div class="login-links">
+    <a href="/customer/forgot-password">Forgot your password?</a>
+  </div>
+
+  <div class="login-footer">
+    <p>Don't have an account? <a href="/customer/register">Create one</a></p>
+  </div>
+</div>
+
+<style>
+  .customer-login-form {
+    background: #f9fafb;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+  }
+
+  .customer-login-form h3 {
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+    font-size: 1.1rem;
+    color: #1f2937;
+  }
+
+  .login-subtitle {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .login-form {
+    margin-bottom: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .error-message {
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+
+  .success-message {
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+
+  .btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .btn-block {
+    width: 100%;
+  }
+
+  .login-links {
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .login-links a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+
+  .login-links a:hover {
+    text-decoration: underline;
+  }
+
+  .login-footer {
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.85rem;
+  }
+
+  .login-footer a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .login-footer a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<script>
+  document.getElementById('customer-login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('customer-email').value;
+    const password = document.getElementById('customer-password').value;
+    const errorDiv = document.getElementById('customer-login-error');
+    const successDiv = document.getElementById('customer-login-success');
+
+    errorDiv.classList.add('hidden');
+    successDiv.classList.add('hidden');
+
+    try {
+      const response = await fetch('/api/customer-auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Login failed');
+      }
+
+      successDiv.textContent = 'Login successful!';
+      successDiv.classList.remove('hidden');
+
+      // Reload page to update checkout context
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err) {
+      errorDiv.textContent = err.message;
+      errorDiv.classList.remove('hidden');
+    }
+  });
+</script>

@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(grep:*)",
+      "Bash(npm run db:migrate:*)",
+      "Bash(npm run db:seed:*)",
+      "Bash(node:*)",
+      "Bash(git reset:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run migrate:customers:*)"
     ]
   }
 }

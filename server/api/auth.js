@@ -133,15 +133,87 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Get user by ID (admin only)
+router.get('/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const users = await query('SELECT id, email, name, role, created_at FROM users WHERE id = ?', [id]);
+
+    if (!users[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(users[0]);
+  } catch (err) {
+    console.error('Get user error:', err);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// Update user (admin only)
+router.put('/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, name, role, password } = req.body;
+
+    // Validate at least one field is provided
+    if (!email && !name && !role && !password) {
+      return res.status(400).json({ error: 'At least one field required to update' });
+    }
+
+    // Check if user exists
+    const users = await query('SELECT id FROM users WHERE id = ?', [id]);
+    if (!users[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+
+    if (email) {
+      updates.push('email = ?');
+      values.push(email);
+    }
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (role) {
+      updates.push('role = ?');
+      values.push(role);
+    }
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updates.push('password = ?');
+      values.push(hashedPassword);
+    }
+
+    values.push(id);
+
+    await query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
+
+    // Return updated user
+    const updatedUsers = await query('SELECT id, email, name, role, created_at FROM users WHERE id = ?', [id]);
+    res.json(updatedUsers[0]);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    console.error('Update user error:', err);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
 // Delete user (admin only)
 router.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (parseInt(id) === req.user.id) {
       return res.status(400).json({ error: 'Cannot delete yourself' });
     }
-    
+
     await query('DELETE FROM users WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {

@@ -1,0 +1,153 @@
+{# Reusable product card component
+   Usage: {% include "components/product-card.njk" with { product: myProduct } %}
+   Or: {% include "components/product-card.njk" with { productId: 5 } %}
+#}
+
+{% if productId %}
+  {% set product = getProduct(productId) %}
+{% endif %}
+
+{% if product %}
+<div class="product-card">
+  <div class="product-image">
+    {% if product.slug %}
+      <a href="/{{ product.slug }}">
+        <div class="image-placeholder">Product Image</div>
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="product-info">
+    <h3 class="product-title">
+      {% if product.slug %}
+        <a href="/{{ product.slug }}">{{ product.title }}</a>
+      {% else %}
+        {{ product.title }}
+      {% endif %}
+    </h3>
+
+    <div class="product-meta">
+      <span class="sku">SKU: {{ product.sku }}</span>
+    </div>
+
+    <div class="product-price">
+      <span class="price">${{ (product.price / 100 * 100) | round(2) }}</span>
+      {% if product.compare_at_price %}
+        <span class="compare-price">${{ (product.compare_at_price / 100 * 100) | round(2) }}</span>
+      {% endif %}
+    </div>
+
+    {% if product.inventory_quantity > 0 %}
+      <span class="stock in-stock">In Stock ({{ product.inventory_quantity }})</span>
+    {% else %}
+      <span class="stock out-of-stock">Out of Stock</span>
+    {% endif %}
+
+    {% if product.slug %}
+      <a href="/{{ product.slug }}" class="btn btn-primary">View Details</a>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .product-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+
+  .product-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .product-image {
+    background: #f3f4f6;
+    padding: 1rem;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .image-placeholder {
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  .product-info {
+    padding: 1.5rem;
+  }
+
+  .product-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .product-title a {
+    color: #1f2937;
+    text-decoration: none;
+  }
+
+  .product-title a:hover {
+    color: #3b82f6;
+  }
+
+  .product-meta {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+  }
+
+  .product-price {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+  }
+
+  .compare-price {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    text-decoration: line-through;
+    margin-left: 0.5rem;
+  }
+
+  .stock {
+    display: inline-block;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+  }
+
+  .stock.in-stock {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .stock.out-of-stock {
+    background: #fee2e2;
+    color: #7f1d1d;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .btn:hover {
+    background: #2563eb;
+  }
+</style>
+{% else %}
+<div class="product-not-found">
+  Product not found
+</div>
+{% endif %}
