@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import { slugify } from '../lib/slugify';
 import RichTextEditor from '../components/RichTextEditor';
 import MediaPicker from '../components/MediaPicker';
+import TitleSlugSection from '../components/TitleSlugSection';
+import ContentGroupsWidget from '../components/ContentGroupsWidget';
 import {
   Save,
   ArrowLeft,
@@ -56,9 +59,14 @@ export default function PageEditor() {
     }
   }, [id]);
 
+  // Auto-sync slug from title
+  useEffect(() => {
+    setPage(p => ({ ...p, slug: slugify(p.title, 'pages') }));
+  }, [page.title]);
+
   const loadTemplates = async () => {
     try {
-      const data = await api.get('/templates');
+      const data = await api.get('/templates/content_type/pages');
       setTemplates(data);
     } catch (err) {
       console.error('Failed to load templates:', err);
@@ -436,28 +444,12 @@ export default function PageEditor() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Info */}
-          <div className="card p-6 space-y-4">
-            <div>
-              <label className="label">Title</label>
-              <input
-                type="text"
-                value={page.title}
-                onChange={(e) => setPage(p => ({ ...p, title: e.target.value }))}
-                className="input"
-                placeholder="Page title"
-              />
-            </div>
-            <div>
-              <label className="label">URL Slug</label>
-              <input
-                type="text"
-                value={page.slug}
-                onChange={(e) => setPage(p => ({ ...p, slug: e.target.value }))}
-                className="input"
-                placeholder="/about-us"
-              />
-            </div>
-          </div>
+          <TitleSlugSection
+            title={page.title}
+            slug={page.slug}
+            onTitleChange={(title) => setPage(p => ({ ...p, title }))}
+            onSlugChange={(slug) => setPage(p => ({ ...p, slug }))}
+          />
 
           {/* Content Regions */}
           {regions.length > 0 && (
@@ -592,6 +584,13 @@ export default function PageEditor() {
           </div>
         </div>
       </div>
+
+      {/* Groups Widget */}
+      {page.id && (
+        <div style={{ marginTop: '2rem' }}>
+          <ContentGroupsWidget contentId={page.id} />
+        </div>
+      )}
 
       {/* Media Picker Modal */}
       {mediaPickerOpen && (
