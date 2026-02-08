@@ -1,0 +1,163 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="product-container">
+  <div class="product-wrapper">
+    <div class="product-images">
+      {% if product.og_image %}
+        <img src="{{ product.og_image }}" alt="{{ product.title }}">
+      {% else %}
+        <div class="placeholder">No image</div>
+      {% endif %}
+    </div>
+
+    <div class="product-info">
+      <h1>{{ product.title }}</h1>
+
+      <div class="product-price">${{ product.price | round(2) }}</div>
+
+      {% if product.inventory_tracking %}
+        <div class="inventory">
+          {% if product.inventory_quantity > 0 %}
+            <p>✓ In Stock ({{ product.inventory_quantity }} available)</p>
+          {% elif product.allow_backorder %}
+            <p>Pre-order available</p>
+          {% else %}
+            <p>✗ Out of Stock</p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="product-details">
+        <p><strong>SKU:</strong> {{ product.sku }}</p>
+        {% if product.weight %}
+          <p><strong>Weight:</strong> {{ product.weight }} {{ product.weight_unit }}</p>
+        {% endif %}
+      </div>
+
+      <div class="add-to-cart-section">
+        <div class="quantity-controls">
+          <button id="qty-minus" type="button">−</button>
+          <input id="qty-input" type="number" value="1" min="1" max="999">
+          <button id="qty-plus" type="button">+</button>
+        </div>
+        <button id="add-to-cart-btn" class="btn btn-primary" data-product-id="{{ product.id }}">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .product-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .product-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 4rem;
+  }
+
+  .product-images {
+    background: #f5f5f5;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+  }
+
+  .product-images img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .placeholder {
+    color: #ccc;
+    font-size: 2rem;
+  }
+
+  .product-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .product-price {
+    font-size: 1.75rem;
+    font-weight: bold;
+  }
+
+  .inventory {
+    padding: 1rem;
+    background: #f0f9ff;
+    border-radius: 6px;
+  }
+
+  .product-details {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1.5rem;
+  }
+
+  .add-to-cart-section {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .quantity-controls {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+  }
+
+  .quantity-controls button {
+    background: none;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: #6b7280;
+    transition: color 0.2s;
+  }
+
+  .quantity-controls button:hover {
+    color: #111;
+  }
+
+  #qty-input {
+    border: none;
+    background: none;
+    width: 60px;
+    text-align: center;
+    font-size: 1rem;
+    padding: 0.5rem 0;
+  }
+
+  #qty-input:focus {
+    outline: none;
+  }
+
+  .add-to-cart-section .btn {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .product-wrapper {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+</style>
+
+<script src="/js/cart.js"></script>
+<script src="/js/add-to-cart.js"></script>
+{% endblock %}
