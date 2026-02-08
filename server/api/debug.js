@@ -73,7 +73,7 @@ router.get('/public-render', requireAuth, requireAdmin, async (req, res) => {
 router.get('/all-content', requireAuth, async (req, res) => {
   try {
     const content = await query(`
-      SELECT id, module, slug, title
+      SELECT DISTINCT id, module, slug, title
       FROM content
       ORDER BY title ASC, slug ASC
     `);

@@ -46,15 +46,6 @@ export default function GroupEditor() {
       if (contentRes.ok) {
         const contentData = await contentRes.json();
         setAllContent(contentData);
-      } else {
-        // Fallback: try to get from pages endpoint
-        const pagesRes = await fetch('/api/pages', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (pagesRes.ok) {
-          const contentData = await pagesRes.json();
-          setAllContent(contentData);
-        }
       }
 
       // Load group if editing
