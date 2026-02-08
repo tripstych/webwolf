@@ -39,13 +39,22 @@ export default function GroupEditor() {
         setAllGroups(groupsData);
       }
 
-      // Load all content
-      const contentRes = await fetch('/api/pages', {
+      // Load all content from database
+      const contentRes = await fetch('/api/debug/all-content', {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (contentRes.ok) {
         const contentData = await contentRes.json();
         setAllContent(contentData);
+      } else {
+        // Fallback: try to get from pages endpoint
+        const pagesRes = await fetch('/api/pages', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (pagesRes.ok) {
+          const contentData = await pagesRes.json();
+          setAllContent(contentData);
+        }
       }
 
       // Load group if editing

@@ -67,4 +67,22 @@ router.get('/public-render', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * Get all content for UI dropdowns
+ */
+router.get('/all-content', requireAuth, async (req, res) => {
+  try {
+    const content = await query(`
+      SELECT id, module, slug, title
+      FROM content
+      ORDER BY title ASC, slug ASC
+    `);
+
+    res.json(content);
+  } catch (err) {
+    console.error('Error fetching all content:', err);
+    res.status(500).json({ error: 'Failed to fetch content' });
+  }
+});
+
 export default router;
