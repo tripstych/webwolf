@@ -90,10 +90,33 @@ async function seed() {
     }
     console.log('✅ Default settings created');
 
+    // Seed default content types
+    await query(
+      `INSERT INTO content_types (name, label, plural_label, icon, menu_order, has_status, has_seo, is_system)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE label = VALUES(label), plural_label = VALUES(plural_label)`,
+      ['pages', 'Page', 'Pages', 'FileText', 1, true, true, true]
+    );
+
+    await query(
+      `INSERT INTO content_types (name, label, plural_label, icon, menu_order, has_status, has_seo, is_system)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE label = VALUES(label), plural_label = VALUES(plural_label)`,
+      ['blocks', 'Block', 'Blocks', 'Boxes', 2, false, false, true]
+    );
+
+    await query(
+      `INSERT INTO content_types (name, label, plural_label, icon, menu_order, has_status, has_seo, is_system)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE label = VALUES(label), plural_label = VALUES(plural_label)`,
+      ['products', 'Product', 'Products', 'ShoppingCart', 3, true, true, false]
+    );
+    console.log('✅ Default content types created');
+
     // Create sample homepage
-    const [templates] = await query('SELECT id FROM templates WHERE filename = ?', ['pages/homepage.njk']);
-    if (templates) {
-      const homeContent = JSON.stringify({
+    const templates = await query('SELECT id FROM templates WHERE filename = ?', ['pages/homepage.njk']);
+    if (templates && templates[0]) {
+      const homeContent = {
         hero_title: 'Welcome to WebWolf CMS',
         hero_subtitle: 'Build SEO-optimized websites with ease',
         hero_cta_text: 'Get Started',
@@ -104,13 +127,34 @@ async function seed() {
           { title: 'Fast Rendering', description: 'Server-side rendered pages for optimal performance', icon: 'zap' },
           { title: 'Easy to Use', description: 'Intuitive admin interface powered by React', icon: 'smile' }
         ]
-      });
+      };
+
+      // Get or create content record
+      let contentId;
+      const existingContent = await query('SELECT id FROM content WHERE slug = ?', ['/pages/home']);
+
+      if (existingContent && existingContent[0]) {
+        contentId = existingContent[0].id;
+        // Update existing content
+        await query(
+          'UPDATE content SET module = ?, title = ?, data = ? WHERE slug = ?',
+          ['pages', 'Home', JSON.stringify(homeContent), '/pages/home']
+        );
+      } else {
+        // Create new content
+        const contentResult = await query(
+          `INSERT INTO content (module, slug, title, data)
+           VALUES (?, ?, ?, ?)`,
+          ['pages', '/pages/home', 'Home', JSON.stringify(homeContent)]
+        );
+        contentId = contentResult.insertId;
+      }
 
       await query(
-        `INSERT INTO pages (template_id, title, slug, content, status, meta_title, meta_description, created_by) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE content = VALUES(content)`,
-        [templates.id, 'Home', '/', homeContent, 'published', 'Welcome to WebWolf CMS', 'A powerful SEO-centric content management system', 1]
+        `INSERT INTO pages (template_id, content_id, status, meta_title, meta_description, created_by)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE content_id = VALUES(content_id)`,
+        [templates[0].id, contentId, 'published', 'Welcome to WebWolf CMS', 'A powerful SEO-centric content management system', 1]
       );
       console.log('✅ Sample homepage created');
     }
