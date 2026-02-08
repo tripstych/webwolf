@@ -1,0 +1,237 @@
+<div class="cart-view-block">
+  <div class="cart-header">
+    <h3>Shopping Cart</h3>
+    <span class="cart-count" id="cart-item-count">0</span>
+  </div>
+
+  <div id="cart-items-list" class="cart-items-list">
+    <p class="empty-message">Your cart is empty</p>
+  </div>
+
+  <div class="cart-summary">
+    <div class="summary-row">
+      <span>Subtotal:</span>
+      <span class="amount" id="cart-subtotal">$0.00</span>
+    </div>
+    <div class="summary-row">
+      <span>Tax:</span>
+      <span class="amount" id="cart-tax">$0.00</span>
+    </div>
+    <div class="summary-row">
+      <span>Shipping:</span>
+      <span class="amount" id="cart-shipping">$0.00</span>
+    </div>
+    <div class="summary-row total">
+      <span>Total:</span>
+      <span class="amount" id="cart-total">$0.00</span>
+    </div>
+  </div>
+
+  <div class="cart-actions">
+    <a href="/cart" class="btn btn-secondary">View Cart</a>
+    <a href="/checkout" class="btn btn-primary">Checkout</a>
+  </div>
+</div>
+
+<style>
+  .cart-view-block {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    max-width: 400px;
+  }
+
+  .cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f3f4f6;
+  }
+
+  .cart-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #111;
+  }
+
+  .cart-count {
+    background: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .cart-items-list {
+    margin-bottom: 1.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .cart-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cart-item:last-child {
+    border-bottom: none;
+  }
+
+  .item-details {
+    flex: 1;
+  }
+
+  .item-name {
+    font-weight: 500;
+    color: #111;
+    margin: 0;
+  }
+
+  .item-qty {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0.25rem 0 0;
+  }
+
+  .item-price {
+    font-weight: 600;
+    color: #111;
+    text-align: right;
+  }
+
+  .empty-message {
+    text-align: center;
+    color: #9ca3af;
+    padding: 1rem 0;
+    margin: 0;
+    font-style: italic;
+  }
+
+  .cart-summary {
+    background: #f9fafb;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .summary-row.total {
+    border-top: 2px solid #e5e7eb;
+    padding-top: 0.75rem;
+    margin-top: 0.75rem;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #111;
+  }
+
+  .amount {
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .cart-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+  }
+
+  .btn-secondary:hover {
+    background: #f9fafb;
+  }
+
+  .btn-primary {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #2563eb;
+  }
+</style>
+
+<script>
+if (typeof window.cart !== 'undefined') {
+  function updateCartView() {
+    const cart = window.cart.cart;
+    const itemsList = document.getElementById('cart-items-list');
+    const itemCount = document.getElementById('cart-item-count');
+    const subtotal = document.getElementById('cart-subtotal');
+    const tax = document.getElementById('cart-tax');
+    const shipping = document.getElementById('cart-shipping');
+    const total = document.getElementById('cart-total');
+
+    if (!cart.items || cart.items.length === 0) {
+      itemsList.innerHTML = '<p class="empty-message">Your cart is empty</p>';
+      itemCount.textContent = '0';
+      subtotal.textContent = '$0.00';
+      tax.textContent = '$0.00';
+      shipping.textContent = '$0.00';
+      total.textContent = '$0.00';
+      return;
+    }
+
+    const items = cart.items.map(item => `
+      <div class="cart-item">
+        <div class="item-details">
+          <p class="item-name">${item.title || 'Product'}</p>
+          <p class="item-qty">Qty: ${item.quantity}</p>
+        </div>
+        <div class="item-price">$${(item.price * item.quantity).toFixed(2)}</div>
+      </div>
+    `).join('');
+
+    itemsList.innerHTML = items;
+    itemCount.textContent = cart.items.length;
+    
+    const subtotalAmount = (cart.subtotal || 0).toFixed(2);
+    const taxAmount = (cart.tax || 0).toFixed(2);
+    const shippingAmount = (cart.shipping || 0).toFixed(2);
+    const totalAmount = (cart.total || 0).toFixed(2);
+
+    subtotal.textContent = '$' + subtotalAmount;
+    tax.textContent = '$' + taxAmount;
+    shipping.textContent = '$' + shippingAmount;
+    total.textContent = '$' + totalAmount;
+  }
+
+  // Update on load
+  updateCartView();
+
+  // Listen for cart changes
+  window.cart.subscribe(() => {
+    updateCartView();
+  });
+}
+</script>
