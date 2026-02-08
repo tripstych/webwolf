@@ -5,50 +5,67 @@ import { requireAuth, requireEditor } from '../middleware/auth.js';
 
 const router = Router();
 
+
 // List all pages
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { status, template_id } = req.query;
-    
+    const { status, template_id, content_type } = req.query;
+
     let sql = `
       SELECT p.*, t.name as template_name, t.filename as template_filename,
-             u1.name as created_by_name, u2.name as updated_by_name
+             u1.name as created_by_name, u2.name as updated_by_name,
+             c.title as content_title, c.slug as content_slug,
+             COALESCE(c.data, '{}') as content_data
       FROM pages p
       LEFT JOIN templates t ON p.template_id = t.id
       LEFT JOIN users u1 ON p.created_by = u1.id
       LEFT JOIN users u2 ON p.updated_by = u2.id
+      LEFT JOIN content c ON p.content_id = c.id
       WHERE 1=1
     `;
     const params = [];
-    
+
     if (status) {
       sql += ' AND p.status = ?';
       params.push(status);
     }
-    
+
     if (template_id) {
       sql += ' AND p.template_id = ?';
       params.push(template_id);
     }
-    
+
+    if (content_type) {
+      sql += ' AND p.content_type = ?';
+      params.push(content_type);
+    }
+
     sql += ' ORDER BY p.updated_at DESC';
-    
+
     const pages = await query(sql, params);
-    
+
     // Parse JSON content
     pages.forEach(page => {
-      if (page.content) {
-        try {
-          page.content = JSON.parse(page.content);
-        } catch (e) {}
+      try {
+        page.content = JSON.parse(page.content_data || '{}');
+      } catch (e) {
+        page.content = {};
       }
+      delete page.content_data;
+
+      // Add title and slug from content table
+      page.title = page.content_title;
+      page.slug = page.content_slug;
+      delete page.content_title;
+      delete page.content_slug;
+
       if (page.schema_markup) {
         try {
           page.schema_markup = JSON.parse(page.schema_markup);
         } catch (e) {}
       }
     });
-    
+
     res.json(pages);
   } catch (err) {
     console.error('List pages error:', err);
@@ -60,27 +77,43 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const pages = await query(`
-      SELECT p.*, t.name as template_name, t.filename as template_filename, t.regions as template_regions
+      SELECT p.*, t.name as template_name, t.filename as template_filename, t.regions as template_regions,
+             c.title as content_title, c.slug as content_slug,
+             COALESCE(c.data, '{}') as content_data
       FROM pages p
       LEFT JOIN templates t ON p.template_id = t.id
+      LEFT JOIN content c ON p.content_id = c.id
       WHERE p.id = ?
     `, [req.params.id]);
-    
+
     if (!pages[0]) {
       return res.status(404).json({ error: 'Page not found' });
     }
-    
+
     const page = pages[0];
-    
+
     // Parse JSON fields
-    ['content', 'schema_markup', 'template_regions'].forEach(field => {
+    try {
+      page.content = JSON.parse(page.content_data || '{}');
+    } catch (e) {
+      page.content = {};
+    }
+    delete page.content_data;
+
+    // Add title and slug from content table
+    page.title = page.content_title;
+    page.slug = page.content_slug;
+    delete page.content_title;
+    delete page.content_slug;
+
+    ['schema_markup', 'template_regions'].forEach(field => {
       if (page[field]) {
         try {
           page[field] = JSON.parse(page[field]);
         } catch (e) {}
       }
     });
-    
+
     res.json(page);
   } catch (err) {
     console.error('Get page error:', err);
@@ -96,6 +129,7 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       title,
       slug: providedSlug,
       content,
+      content_type,
       status,
       meta_title,
       meta_description,
@@ -106,30 +140,53 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       robots,
       schema_markup
     } = req.body;
-    
+
     if (!template_id || !title) {
       return res.status(400).json({ error: 'Template and title required' });
     }
-    
+
+    // Validate template belongs to the correct content type
+    const templates = await query(
+      'SELECT content_type FROM templates WHERE id = ?',
+      [template_id]
+    );
+
+    if (!templates[0]) {
+      return res.status(400).json({ error: 'Template not found' });
+    }
+
+    if (templates[0].content_type !== (content_type || 'pages')) {
+      return res.status(400).json({
+        error: `Template belongs to "${templates[0].content_type}" content type, not "${content_type || 'pages'}"`
+      });
+    }
+
     // Generate slug if not provided
     let slug = providedSlug || slugify(title, { lower: true, strict: true });
-    
-    // Ensure slug starts with /
-    if (!slug.startsWith('/')) {
-      slug = '/' + slug;
+
+    // Prepend /pages/ if not already present (keeps slug globally unique)
+    if (!slug.startsWith('/pages/')) {
+      slug = slug.replace(/^\/+/, '');
+      slug = '/pages/' + slug;
     }
-    
+
+    // Create content record
+    const contentResult = await query(
+      'INSERT INTO content (module, title, slug, data) VALUES (?, ?, ?, ?)',
+      [content_type || 'pages', title, slug, JSON.stringify(content || {})]
+    );
+    const contentId = contentResult.insertId;
+
     const result = await query(`
       INSERT INTO pages (
-        template_id, title, slug, content, status,
+        template_id, content_id, content_type, status,
         meta_title, meta_description, og_title, og_description, og_image,
         canonical_url, robots, schema_markup, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       template_id,
-      title,
-      slug,
-      JSON.stringify(content || {}),
+      contentId,
+      content_type || 'pages',
       status || 'draft',
       meta_title || title,
       meta_description || '',
@@ -142,12 +199,9 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       req.user.id,
       req.user.id
     ]);
-    
+
     res.status(201).json({ id: result.insertId, slug });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ error: 'Slug already exists' });
-    }
     console.error('Create page error:', err);
     res.status(500).json({ error: 'Failed to create page' });
   }
@@ -161,6 +215,7 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       title,
       slug,
       content,
+      content_type,
       status,
       meta_title,
       meta_description,
@@ -171,35 +226,123 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       robots,
       schema_markup
     } = req.body;
-    
-    // Build update dynamically
+
+    // Validate template belongs to the correct content type if changing it
+    if (template_id !== undefined) {
+      const templates = await query(
+        'SELECT content_type FROM templates WHERE id = ?',
+        [template_id]
+      );
+
+      if (!templates[0]) {
+        return res.status(400).json({ error: 'Template not found' });
+      }
+
+      // Get current page to check content_type
+      const pages = await query(
+        'SELECT content_type FROM pages WHERE id = ?',
+        [req.params.id]
+      );
+
+      if (!pages[0]) {
+        return res.status(404).json({ error: 'Page not found' });
+      }
+
+      const pageContentType = content_type !== undefined ? content_type : pages[0].content_type;
+
+      if (templates[0].content_type !== pageContentType) {
+        return res.status(400).json({
+          error: `Template belongs to "${templates[0].content_type}" content type, not "${pageContentType}"`
+        });
+      }
+    }
+
+    // Get current page to handle content updates
+    const existingPages = await query(
+      'SELECT content_id FROM pages WHERE id = ?',
+      [req.params.id]
+    );
+
+    if (!existingPages[0]) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+
+    // Handle content update
+    let contentIdToSet = existingPages[0].content_id;
+
+    if (content !== undefined || title !== undefined || slug !== undefined) {
+      // Get existing content data
+      let contentData = {};
+      if (contentIdToSet) {
+        const contentRows = await query('SELECT data FROM content WHERE id = ?', [contentIdToSet]);
+        if (contentRows[0]) {
+          try {
+            contentData = JSON.parse(contentRows[0].data || '{}');
+          } catch (e) {
+            contentData = {};
+          }
+        }
+      }
+
+      // Merge content updates
+      if (content !== undefined) {
+        contentData = { ...contentData, ...content };
+      }
+
+      // Update content table
+      const contentUpdates = [];
+      const contentParams = [];
+
+      if (title !== undefined) {
+        contentUpdates.push('title = ?');
+        contentParams.push(title);
+      }
+      if (slug !== undefined) {
+        let normalizedSlug = slug;
+        // Ensure slug starts with /
+        if (!normalizedSlug.startsWith('/')) {
+          normalizedSlug = '/' + normalizedSlug;
+        }
+        contentUpdates.push('slug = ?');
+        contentParams.push(normalizedSlug);
+      }
+      if (content !== undefined) {
+        contentUpdates.push('data = ?');
+        contentParams.push(JSON.stringify(contentData));
+      }
+
+      if (contentIdToSet && contentUpdates.length > 0) {
+        contentParams.push(contentIdToSet);
+        await query(`UPDATE content SET ${contentUpdates.join(', ')} WHERE id = ?`, contentParams);
+      } else if (!contentIdToSet && Object.keys(contentData).length > 0) {
+        const contentResult = await query(
+          'INSERT INTO content (module, title, slug, data) VALUES (?, ?, ?, ?)',
+          [content_type || 'pages', title || null, slug || null, JSON.stringify(contentData)]
+        );
+        contentIdToSet = contentResult.insertId;
+      }
+    }
+
+    // Build pages table update
     const updates = [];
     const params = [];
-    
+
     if (template_id !== undefined) {
       updates.push('template_id = ?');
       params.push(template_id);
     }
-    if (title !== undefined) {
-      updates.push('title = ?');
-      params.push(title);
+    if (contentIdToSet !== undefined && !existingPages[0].content_id) {
+      updates.push('content_id = ?');
+      params.push(contentIdToSet);
     }
-    if (slug !== undefined) {
-      let normalizedSlug = slug;
-      if (!normalizedSlug.startsWith('/')) {
-        normalizedSlug = '/' + normalizedSlug;
-      }
-      updates.push('slug = ?');
-      params.push(normalizedSlug);
-    }
-    if (content !== undefined) {
-      updates.push('content = ?');
-      params.push(JSON.stringify(content));
+    if (content_type !== undefined) {
+      updates.push('content_type = ?');
+      params.push(content_type);
     }
     if (status !== undefined) {
       updates.push('status = ?');
       params.push(status);
-      
+
       // Set published_at when first published
       if (status === 'published') {
         updates.push('published_at = COALESCE(published_at, NOW())');
@@ -237,13 +380,15 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       updates.push('schema_markup = ?');
       params.push(JSON.stringify(schema_markup));
     }
-    
+
     updates.push('updated_by = ?');
     params.push(req.user.id);
-    
+
     params.push(req.params.id);
-    
-    await query(`UPDATE pages SET ${updates.join(', ')} WHERE id = ?`, params);
+
+    if (updates.length > 0) {
+      await query(`UPDATE pages SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
     
     res.json({ success: true });
   } catch (err) {
@@ -269,26 +414,49 @@ router.delete('/:id', requireAuth, requireEditor, async (req, res) => {
 // Duplicate page
 router.post('/:id/duplicate', requireAuth, requireEditor, async (req, res) => {
   try {
-    const pages = await query('SELECT * FROM pages WHERE id = ?', [req.params.id]);
-    
+    const pages = await query(`
+      SELECT p.*,
+             c.title as content_title, c.slug as content_slug,
+             COALESCE(c.data, '{}') as content_data
+      FROM pages p
+      LEFT JOIN content c ON p.content_id = c.id
+      WHERE p.id = ?
+    `, [req.params.id]);
+
     if (!pages[0]) {
       return res.status(404).json({ error: 'Page not found' });
     }
-    
+
     const original = pages[0];
-    const newSlug = `${original.slug}-copy-${Date.now()}`;
-    
+    let contentData = {};
+    try {
+      contentData = JSON.parse(original.content_data || '{}');
+    } catch (e) {
+      contentData = {};
+    }
+
+    const originalTitle = original.content_title || 'Untitled';
+    const originalSlug = original.content_slug || '/';
+    const newSlug = `${originalSlug}-copy-${Date.now()}`.replace('//', '/');
+    const newTitle = `${originalTitle} (Copy)`;
+
+    // Duplicate content record with updated title and slug
+    const contentResult = await query(
+      'INSERT INTO content (module, title, slug, data) VALUES (?, ?, ?, ?)',
+      ['pages', newTitle, newSlug, JSON.stringify(contentData)]
+    );
+    const newContentId = contentResult.insertId;
+
     const result = await query(`
       INSERT INTO pages (
-        template_id, title, slug, content, status,
+        template_id, content_id, content_type, status,
         meta_title, meta_description, og_title, og_description, og_image,
         canonical_url, robots, schema_markup, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       original.template_id,
-      `${original.title} (Copy)`,
-      newSlug,
-      original.content,
+      newContentId,
+      original.content_type || 'pages',
       original.meta_title,
       original.meta_description,
       original.og_title,
@@ -300,7 +468,7 @@ router.post('/:id/duplicate', requireAuth, requireEditor, async (req, res) => {
       req.user.id,
       req.user.id
     ]);
-    
+
     res.status(201).json({ id: result.insertId, slug: newSlug });
   } catch (err) {
     console.error('Duplicate page error:', err);
