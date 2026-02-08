@@ -11,7 +11,12 @@ export default function Settings() {
     default_meta_description: '',
     google_analytics_id: '',
     robots_txt: '',
-    home_page_id: ''
+    home_page_id: '',
+    stripe_public_key: '',
+    stripe_secret_key: '',
+    paypal_client_id: '',
+    paypal_client_secret: '',
+    paypal_mode: 'sandbox'
   });
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +42,12 @@ export default function Settings() {
         default_meta_description: data.default_meta_description || '',
         google_analytics_id: data.google_analytics_id || '',
         robots_txt: data.robots_txt || 'User-agent: *\nAllow: /',
-        home_page_id: data.home_page_id || ''
+        home_page_id: data.home_page_id || '',
+        stripe_public_key: data.stripe_public_key || '',
+        stripe_secret_key: data.stripe_secret_key || '',
+        paypal_client_id: data.paypal_client_id || '',
+        paypal_client_secret: data.paypal_client_secret || '',
+        paypal_mode: data.paypal_mode || 'sandbox'
       });
       setPages(pagesData);
     } catch (err) {
@@ -224,6 +234,94 @@ export default function Settings() {
           <p className="text-xs text-gray-500 mt-1">
             Leave empty to disable Google Analytics
           </p>
+        </div>
+      </div>
+
+      {/* Payment Methods */}
+      <div className="card p-6 space-y-4">
+        <h2 className="font-semibold text-gray-900 pb-2 border-b border-gray-200">
+          Payment Methods
+        </h2>
+
+        {/* Stripe */}
+        <div className="border-b border-gray-200 pb-4">
+          <h3 className="font-medium text-gray-900 mb-3">Stripe</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="label">Stripe Public Key</label>
+              <input
+                type="password"
+                value={settings.stripe_public_key}
+                onChange={(e) =>
+                  setSettings({ ...settings, stripe_public_key: e.target.value })
+                }
+                className="input"
+                placeholder="pk_test_..."
+              />
+            </div>
+            <div>
+              <label className="label">Stripe Secret Key</label>
+              <input
+                type="password"
+                value={settings.stripe_secret_key}
+                onChange={(e) =>
+                  setSettings({ ...settings, stripe_secret_key: e.target.value })
+                }
+                className="input"
+                placeholder="sk_test_..."
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              Get your keys from <a href="https://dashboard.stripe.com/apikeys" target="_blank" className="text-blue-600 hover:underline">Stripe Dashboard</a>
+            </p>
+          </div>
+        </div>
+
+        {/* PayPal */}
+        <div>
+          <h3 className="font-medium text-gray-900 mb-3">PayPal</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="label">PayPal Mode</label>
+              <select
+                value={settings.paypal_mode}
+                onChange={(e) =>
+                  setSettings({ ...settings, paypal_mode: e.target.value })
+                }
+                className="input"
+              >
+                <option value="sandbox">Sandbox (Testing)</option>
+                <option value="live">Live (Production)</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">PayPal Client ID</label>
+              <input
+                type="password"
+                value={settings.paypal_client_id}
+                onChange={(e) =>
+                  setSettings({ ...settings, paypal_client_id: e.target.value })
+                }
+                className="input"
+                placeholder="AY2..."
+              />
+            </div>
+            <div>
+              <label className="label">PayPal Client Secret</label>
+              <input
+                type="password"
+                value={settings.paypal_client_secret}
+                onChange={(e) =>
+                  setSettings({ ...settings, paypal_client_secret: e.target.value })
+                }
+                className="input"
+                placeholder="ECn..."
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              Get your credentials from <a href="https://developer.paypal.com/dashboard" target="_blank" className="text-blue-600 hover:underline">PayPal Developer Dashboard</a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
