@@ -112,6 +112,60 @@ router.use(async (req, res, next) => {
   }
 });
 
+// Cart page (special route)
+router.get('/cart', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('shop/cart.njk', {
+      page: { title: 'Shopping Cart', slug: '/cart' },
+      seo: {
+        title: 'Shopping Cart - ' + site.site_name,
+        description: 'View your shopping cart',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Cart page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
+// Checkout page (special route)
+router.get('/checkout', async (req, res) => {
+  try {
+    const site = await getSiteSettings();
+    const menus = await getAllMenus();
+    const blocksData = await getAllBlocks();
+    setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+    res.render('shop/checkout.njk', {
+      page: { title: 'Checkout', slug: '/checkout' },
+      seo: {
+        title: 'Checkout - ' + site.site_name,
+        description: 'Complete your purchase',
+        robots: 'noindex, follow'
+      },
+      site,
+      menus
+    });
+  } catch (err) {
+    console.error('Checkout page error:', err);
+    res.status(500).render('pages/500.njk', {
+      title: 'Server Error',
+      site: await getSiteSettings()
+    });
+  }
+});
+
 // Render pages and other content types
 router.get('*', async (req, res) => {
   try {
