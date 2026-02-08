@@ -59,8 +59,8 @@ export default function Pages() {
   };
 
   const filteredPages = pages.filter(page =>
-    page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    page.slug.toLowerCase().includes(searchQuery.toLowerCase())
+    (page.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (page.slug?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   if (loading) {
@@ -147,9 +147,9 @@ export default function Pages() {
                   <td className="px-6 py-4">
                     <Link to={`/pages/${page.id}`} className="block">
                       <p className="font-medium text-gray-900 hover:text-primary-600">
-                        {page.title}
+                        {page.title || '(Untitled)'}
                       </p>
-                      <p className="text-sm text-gray-500">{page.slug}</p>
+                      <p className="text-sm text-gray-500">{page.slug || '(no slug)'}</p>
                     </Link>
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">

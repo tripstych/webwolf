@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../lib/api';
 import slugify from 'slugify';
 import RichTextEditor from '../components/RichTextEditor';
@@ -12,7 +13,9 @@ import {
   Plus,
   Trash2,
   Image,
-  RefreshCw
+  RefreshCw,
+  Lock,
+  Unlock
 } from 'lucide-react';
 
 export default function BlockEditor() {
@@ -28,6 +31,7 @@ export default function BlockEditor() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [isSlugLocked, setIsSlugLocked] = useState(!isNew);
 
   const [block, setBlock] = useState({
     template_id: '',
@@ -47,7 +51,7 @@ export default function BlockEditor() {
 
   const loadTemplates = async () => {
     try {
-      const data = await api.get('/templates/blocks/list');
+      const data = await api.get('/templates/content_type/blocks/list');
       setTemplates(data);
     } catch (err) {
       console.error('Failed to load templates:', err);
@@ -88,8 +92,24 @@ export default function BlockEditor() {
   };
 
   const handleNameChange = (name) => {
-    const slug = slugify(name, { lower: true, strict: true });
-    setBlock(b => ({ ...b, name, slug }));
+    if (isSlugLocked) {
+      // When locked, only update name
+      setBlock(b => ({ ...b, name }));
+    } else {
+      // When unlocked, auto-generate slug
+      const slug = slugify(name, { lower: true, strict: true });
+      setBlock(b => ({ ...b, name, slug }));
+    }
+  };
+
+  const handleToggleLock = () => {
+    if (isSlugLocked) {
+      // Show warning toast when unlocking
+      toast.warning('Templates will now access the block using the updated slug. Ensure any pages using this block are working as intended!', {
+        duration: 6000,
+      });
+    }
+    setIsSlugLocked(!isSlugLocked);
   };
 
   const handleTemplateChange = (templateId) => {
@@ -418,24 +438,53 @@ export default function BlockEditor() {
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Info */}
           <div className="card p-6 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-semibold text-gray-900">Block Identity</h2>
+              <button
+                type="button"
+                onClick={handleToggleLock}
+                className="btn btn-ghost px-3"
+                title={isSlugLocked ? 'Unlock to edit name and slug' : 'Lock to prevent accidental changes'}
+              >
+                {isSlugLocked ? (
+                  <Lock className="w-4 h-4 text-gray-600" />
+                ) : (
+                  <Unlock className="w-4 h-4 text-amber-600" />
+                )}
+              </button>
+            </div>
+
             <div>
-              <label className="label">Name</label>
+              <label className="label">
+                Name
+                {isSlugLocked && (
+                  <span className="ml-2 text-xs text-gray-500">(locked)</span>
+                )}
+              </label>
               <input
                 type="text"
                 value={block.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 className="input"
                 placeholder="Block name"
+                disabled={isSlugLocked}
               />
             </div>
+
             <div>
-              <label className="label">Slug</label>
+              <label className="label">
+                Slug
+                {isSlugLocked && (
+                  <span className="ml-2 text-xs text-gray-500">(locked)</span>
+                )}
+              </label>
               <input
                 type="text"
                 value={block.slug}
                 onChange={(e) => setBlock(b => ({ ...b, slug: e.target.value }))}
                 className="input"
                 placeholder="block-slug"
+                disabled={isSlugLocked}
               />
             </div>
           </div>
