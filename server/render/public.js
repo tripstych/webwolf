@@ -62,15 +62,19 @@ router.get('/sitemap.xml', async (req, res) => {
   try {
     const settings = await query('SELECT setting_value FROM settings WHERE setting_key = ?', ['site_url']);
     const siteUrl = settings[0]?.setting_value || `${req.protocol}://${req.get('host')}`;
-    
-    const pages = await query(
-      'SELECT slug, updated_at FROM pages WHERE status = ? ORDER BY updated_at DESC',
-      ['published']
-    );
-    
+
+    // Query pages with published status via content table
+    const pages = await query(`
+      SELECT c.slug, p.updated_at
+      FROM pages p
+      JOIN content c ON p.content_id = c.id
+      WHERE p.status = ?
+      ORDER BY p.updated_at DESC
+    `, ['published']);
+
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-    
+
     for (const page of pages) {
       const slug = page.slug === '/' ? '' : page.slug;
       xml += '  <url>\n';
@@ -80,9 +84,9 @@ router.get('/sitemap.xml', async (req, res) => {
       xml += `    <priority>${page.slug === '/' ? '1.0' : '0.8'}</priority>\n`;
       xml += '  </url>\n';
     }
-    
+
     xml += '</urlset>';
-    
+
     res.type('application/xml').send(xml);
   } catch (err) {
     console.error('Sitemap error:', err);
@@ -108,36 +112,56 @@ router.use(async (req, res, next) => {
   }
 });
 
-// Render pages
+// Render pages and other content types
 router.get('*', async (req, res) => {
   try {
+    // Get site settings first to check for home page
+    const site = await getSiteSettings();
+
     // Normalize path
     let slug = req.path;
     if (slug !== '/' && slug.endsWith('/')) {
       slug = slug.slice(0, -1);
     }
 
+    // If root path and home page is set, route to that page
+    if (slug === '/' && site.home_page_id) {
+      try {
+        const homePage = await query(
+          'SELECT p.id, c.slug FROM pages p LEFT JOIN content c ON p.content_id = c.id WHERE p.id = ?',
+          [site.home_page_id]
+        );
+        if (homePage && homePage[0] && homePage[0].slug) {
+          slug = homePage[0].slug;
+        }
+      } catch (err) {
+        // If home page lookup fails, continue with root path
+        logRender('home_page_lookup_error', { error: err.message });
+      }
+    }
+
+    // Default to /pages/ if no module prefix
+    if (slug !== '/') {
+      const segments = slug.split('/').filter(s => s);
+      const knownModules = ['pages', 'products', 'blocks'];
+
+      if (segments.length > 0 && !knownModules.includes(segments[0])) {
+        // No module prefix, default to /pages/
+        slug = '/pages' + slug;
+      }
+    }
+
     if (shouldLogRender(req)) {
       logRender('request', { path: req.path, normalizedSlug: slug });
     }
 
-    // Get page data
-    const pages = await query(`
-      SELECT p.*, t.filename as template_filename
-      FROM pages p
-      LEFT JOIN templates t ON p.template_id = t.id
-      WHERE p.slug = ? AND p.status = 'published'
-    `, [slug]);
+    // Query content table by slug (slug includes module prefix for uniqueness)
+    const contentRows = await query(
+      'SELECT id, module, title, data FROM content WHERE slug = ?',
+      [slug]
+    );
 
-    if (shouldLogRender(req)) {
-      logRender('db_match', {
-        normalizedSlug: slug,
-        matches: pages.length,
-        ids: pages.map(p => p.id)
-      });
-    }
-
-    if (!pages[0]) {
+    if (!contentRows[0]) {
       // Try to render 404 template
       return res.status(404).render('pages/404.njk', {
         title: 'Page Not Found',
@@ -145,60 +169,141 @@ router.get('*', async (req, res) => {
       });
     }
 
-    const page = pages[0];
+    const contentRow = contentRows[0];
+    const contentType = contentRow.module;
+
+    if (shouldLogRender(req)) {
+      logRender('content_found', {
+        slug: slug,
+        contentType: contentType,
+        contentId: contentRow.id
+      });
+    }
+
+    // Query the appropriate module table based on content type
+    let pageData;
+    if (contentType === 'pages') {
+      const pages = await query(`
+        SELECT p.*, t.filename as template_filename
+        FROM pages p
+        LEFT JOIN templates t ON p.template_id = t.id
+        WHERE p.content_id = ? AND p.status = 'published'
+      `, [contentRow.id]);
+      pageData = pages[0];
+    } else if (contentType === 'products') {
+      const products = await query(`
+        SELECT pr.*, t.filename as template_filename,
+               c.title as content_title
+        FROM products pr
+        LEFT JOIN templates t ON pr.template_id = t.id
+        LEFT JOIN content c ON pr.content_id = c.id
+        WHERE pr.content_id = ? AND pr.status IN ('active', 'draft')
+      `, [contentRow.id]);
+      pageData = products[0];
+      // Map content title to page.title for template consistency
+      if (pageData && pageData.content_title) {
+        pageData.title = pageData.content_title;
+        delete pageData.content_title;
+      }
+    } else if (contentType === 'blocks') {
+      const blocks = await query(`
+        SELECT b.*, t.filename as template_filename
+        FROM blocks b
+        LEFT JOIN templates t ON b.template_id = t.id
+        WHERE b.content_id = ?
+      `, [contentRow.id]);
+      pageData = blocks[0];
+    } else {
+      // Unknown content type, try to render as page
+      const pages = await query(`
+        SELECT p.*, t.filename as template_filename
+        FROM pages p
+        LEFT JOIN templates t ON p.template_id = t.id
+        WHERE p.content_id = ? AND p.status = 'published'
+      `, [contentRow.id]);
+      pageData = pages[0];
+    }
+
+    if (!pageData) {
+      // Try to render 404 template
+      return res.status(404).render('pages/404.njk', {
+        title: 'Page Not Found',
+        site: await getSiteSettings()
+      });
+    }
+
+    if (!pageData.template_filename) {
+      console.error('No template assigned to content:', { contentType, contentId: contentRow.id });
+      return res.status(500).render('pages/500.njk', {
+        title: 'Server Error',
+        site: await getSiteSettings()
+      });
+    }
 
     // Parse content JSON
-    const content = parseJsonField(page.content) || {};
+    const content = parseJsonField(contentRow.data) || {};
 
     if (shouldLogRender(req)) {
       const features = content?.features;
       logRender('selected_page', {
-        id: page.id,
-        slug: page.slug,
-        template: page.template_filename,
+        id: pageData.id,
+        slug: slug,
+        template: pageData.template_filename,
+        contentType: contentType,
         featuresType: features === null ? 'null' : typeof features,
         featuresIsArray: Array.isArray(features),
         featuresLength: Array.isArray(features) ? features.length : 0
       });
+
+      // Debug: log all keys in pageData for products
+      if (contentType === 'products') {
+        logRender('product_data_keys', Object.keys(pageData));
+      }
     }
 
-    // Parse schema markup
-    const schemaMarkup = parseJsonField(page.schema_markup);
+    // Parse schema markup (may not exist on all content types)
+    const schemaMarkup = parseJsonField(pageData.schema_markup || null);
 
-    // Get site settings, menus, and blocks
-    const site = await getSiteSettings();
+    // Get menus and blocks
     const menus = await getAllMenus();
     const blocksData = await getAllBlocks();
 
     // Set up renderBlock function for this render
     setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
 
-    // Build SEO data
+    // Build SEO data (with fallbacks for fields that may not exist on all content types)
     const seo = {
-      title: page.meta_title || page.title,
-      description: page.meta_description || '',
-      canonical: page.canonical_url || `${site.site_url}${page.slug}`,
-      robots: page.robots || 'index, follow',
+      title: pageData.meta_title || contentRow.title,
+      description: pageData.meta_description || '',
+      canonical: pageData.canonical_url || `${site.site_url}${slug}`,
+      robots: pageData.robots || 'index, follow',
       og: {
-        title: page.og_title || page.meta_title || page.title,
-        description: page.og_description || page.meta_description || '',
-        image: page.og_image || '',
-        url: `${site.site_url}${page.slug}`,
+        title: pageData.og_title || pageData.meta_title || contentRow.title,
+        description: pageData.og_description || pageData.meta_description || '',
+        image: pageData.og_image || '',
+        url: `${site.site_url}${slug}`,
         type: 'website'
       },
       schema: schemaMarkup
     };
 
-    setRenderDebugHeaders(req, res, page, content);
+    setRenderDebugHeaders(req, res, pageData, content);
 
     // Render template
-    res.render(page.template_filename, {
-      page,
+    const templateContext = {
+      page: pageData,
       content,
       seo,
       site,
       menus
-    });
+    };
+
+    // For products, also pass as 'product' variable for template convenience
+    if (contentType === 'products') {
+      templateContext.product = pageData;
+    }
+
+    res.render(pageData.template_filename, templateContext);
   } catch (err) {
     console.error('Render error:', err);
     res.status(500).render('pages/500.njk', {

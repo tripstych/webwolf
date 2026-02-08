@@ -77,7 +77,8 @@ async function seed() {
       ['default_meta_title', 'WebWolf CMS'],
       ['default_meta_description', 'A powerful SEO-centric content management system'],
       ['google_analytics_id', ''],
-      ['robots_txt', 'User-agent: *\nAllow: /']
+      ['robots_txt', 'User-agent: *\nAllow: /'],
+      ['home_page_id', '']
     ];
 
     for (const [key, value] of defaultSettings) {
@@ -150,12 +151,24 @@ async function seed() {
         contentId = contentResult.insertId;
       }
 
-      await query(
+      const pageResult = await query(
         `INSERT INTO pages (template_id, content_id, status, meta_title, meta_description, created_by)
          VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE content_id = VALUES(content_id)`,
         [templates[0].id, contentId, 'published', 'Welcome to WebWolf CMS', 'A powerful SEO-centric content management system', 1]
       );
+
+      // Get the page ID (either inserted or existing)
+      const pageIdResult = await query('SELECT id FROM pages WHERE content_id = ?', [contentId]);
+      if (pageIdResult && pageIdResult[0]) {
+        const pageId = pageIdResult[0].id;
+        // Set this as the home page
+        await query(
+          'UPDATE settings SET setting_value = ? WHERE setting_key = ?',
+          [String(pageId), 'home_page_id']
+        );
+      }
+
       console.log('✅ Sample homepage created');
     }
 

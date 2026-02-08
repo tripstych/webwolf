@@ -10,8 +10,10 @@ export default function Settings() {
     default_meta_title: '',
     default_meta_description: '',
     google_analytics_id: '',
-    robots_txt: ''
+    robots_txt: '',
+    home_page_id: ''
   });
+  const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +25,10 @@ export default function Settings() {
 
   const loadSettings = async () => {
     try {
-      const data = await api.get('/settings');
+      const [data, pagesData] = await Promise.all([
+        api.get('/settings'),
+        api.get('/pages')
+      ]);
       setSettings({
         site_name: data.site_name || '',
         site_tagline: data.site_tagline || '',
@@ -31,8 +36,10 @@ export default function Settings() {
         default_meta_title: data.default_meta_title || '',
         default_meta_description: data.default_meta_description || '',
         google_analytics_id: data.google_analytics_id || '',
-        robots_txt: data.robots_txt || 'User-agent: *\nAllow: /'
+        robots_txt: data.robots_txt || 'User-agent: *\nAllow: /',
+        home_page_id: data.home_page_id || ''
       });
+      setPages(pagesData);
     } catch (err) {
       console.error('Failed to load settings:', err);
       setError('Failed to load settings');
@@ -127,6 +134,25 @@ export default function Settings() {
           />
           <p className="text-xs text-gray-500 mt-1">
             Used for sitemap generation and canonical URLs
+          </p>
+        </div>
+
+        <div>
+          <label className="label">Home Page</label>
+          <select
+            value={settings.home_page_id}
+            onChange={(e) => setSettings({ ...settings, home_page_id: e.target.value })}
+            className="input"
+          >
+            <option value="">None (use root path)</option>
+            {pages.map((page) => (
+              <option key={page.id} value={page.id}>
+                {page.title || 'Untitled'} ({page.slug})
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            The page to display at the root URL (/)
           </p>
         </div>
       </div>
