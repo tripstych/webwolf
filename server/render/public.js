@@ -156,9 +156,9 @@ router.get('*', async (req, res) => {
     }
 
     // Check if this is a module index request (e.g., /pages/, /products/)
-    const knownModules = ['pages', 'products', 'blocks'];
+    const indexModules = ['pages', 'products'];
     const moduleMatch = slug.match(/^\/([a-z]+)\/?$/);
-    if (moduleMatch && knownModules.includes(moduleMatch[1])) {
+    if (moduleMatch && indexModules.includes(moduleMatch[1])) {
       const module = moduleMatch[1];
       try {
         const templatePath = `${module}/index.njk`;
