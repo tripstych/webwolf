@@ -1,0 +1,79 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<div class="pages-index">
+  <h1>Pages</h1>
+
+  {% if content.length > 0 %}
+    <div class="pages-grid">
+      {% for item in content %}
+        <div class="page-card">
+          <h2><a href="{{ item.slug }}">{{ item.title or 'Untitled' }}</a></h2>
+          <p class="page-slug">{{ item.slug }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-state">No pages found</p>
+  {% endif %}
+</div>
+
+<style>
+  .pages-index {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .pages-index h1 {
+    margin-bottom: 2rem;
+    font-size: 2rem;
+  }
+
+  .pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .page-card {
+    padding: 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    transition: box-shadow 0.2s;
+  }
+
+  .page-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .page-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+  }
+
+  .page-card a {
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .page-card a:hover {
+    text-decoration: underline;
+  }
+
+  .page-slug {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-family: monospace;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: #9ca3af;
+    padding: 3rem 1rem;
+  }
+</style>
+{% endblock %}

@@ -155,6 +155,51 @@ router.get('*', async (req, res) => {
       logRender('request', { path: req.path, normalizedSlug: slug });
     }
 
+    // Check if this is a module index request (e.g., /pages/, /products/)
+    const knownModules = ['pages', 'products', 'blocks'];
+    const moduleMatch = slug.match(/^\/([a-z]+)\/?$/);
+    if (moduleMatch && knownModules.includes(moduleMatch[1])) {
+      const module = moduleMatch[1];
+      try {
+        const templatePath = `${module}/index.njk`;
+
+        // Get module content for context
+        const moduleContent = await query(`
+          SELECT c.id, c.module, c.slug, c.title, COALESCE(c.data, '{}') as data
+          FROM content c
+          WHERE c.module = ?
+          ORDER BY c.title ASC
+        `, [module]);
+
+        const menus = await getAllMenus();
+        const blocksData = await getAllBlocks();
+        setupRenderBlock(req.app.locals.nunjucksEnv, blocksData);
+
+        const context = {
+          module,
+          content: moduleContent,
+          seo: {
+            title: `${module.charAt(0).toUpperCase() + module.slice(1)} - ${site.site_name}`,
+            description: site.default_meta_description,
+            robots: 'index, follow'
+          },
+          site,
+          menus
+        };
+
+        if (shouldLogRender(req)) {
+          logRender('module_index', { module, contentCount: moduleContent.length });
+        }
+
+        return res.render(templatePath, context);
+      } catch (err) {
+        if (shouldLogRender(req)) {
+          logRender('module_index_error', { module: moduleMatch[1], error: err.message });
+        }
+        // Fall through to 404 if template doesn't exist
+      }
+    }
+
     // Query content table by slug (slug includes module prefix for uniqueness)
     const contentRows = await query(
       'SELECT id, module, title, data FROM content WHERE slug = ?',
