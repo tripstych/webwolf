@@ -66,12 +66,12 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     const group = groups[0];
 
-    // Get content in this group
+    // Get content in this group (excluding blocks)
     const content = await query(`
       SELECT c.id, c.module, c.slug, c.title
       FROM content c
       JOIN content_groups cg ON c.id = cg.content_id
-      WHERE cg.group_id = ?
+      WHERE cg.group_id = ? AND c.module != 'blocks'
       ORDER BY c.title ASC
     `, [id]);
 
@@ -200,10 +200,13 @@ router.post('/:id/content', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Check if content exists
-    const content = await query('SELECT id FROM content WHERE id = ?', [content_id]);
+    // Check if content exists and is not a block
+    const content = await query('SELECT id, module FROM content WHERE id = ?', [content_id]);
     if (!content[0]) {
       return res.status(404).json({ error: 'Content not found' });
+    }
+    if (content[0].module === 'blocks') {
+      return res.status(400).json({ error: 'Blocks cannot belong to groups' });
     }
 
     // Add to group (ignore if already exists)
@@ -274,6 +277,12 @@ router.get('/hierarchy', requireAuth, async (req, res) => {
 router.get('/content/:content_id/groups', requireAuth, async (req, res) => {
   try {
     const { content_id } = req.params;
+
+    // Verify content isn't a block
+    const contentCheck = await query('SELECT module FROM content WHERE id = ?', [content_id]);
+    if (contentCheck[0]?.module === 'blocks') {
+      return res.status(400).json({ error: 'Blocks cannot belong to groups' });
+    }
 
     const groups = await query(`
       SELECT g.id, g.parent_id, g.name

@@ -154,10 +154,11 @@ export default function GroupEditor() {
     }
   };
 
-  // Filter available content (not already in group)
+  // Filter available content (not already in group, exclude blocks)
   const contentInGroup = new Set(groupContent.map(c => c.id));
   const availableContent = allContent.filter(
-    c => !contentInGroup.has(c.id) &&
+    c => c.module !== 'blocks' &&
+      !contentInGroup.has(c.id) &&
       (c.title || '').toLowerCase().includes(searchContent.toLowerCase())
   );
 

@@ -68,13 +68,14 @@ router.get('/public-render', requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
- * Get all content for UI dropdowns
+ * Get all content for UI dropdowns (excludes blocks)
  */
 router.get('/all-content', requireAuth, async (req, res) => {
   try {
     const content = await query(`
       SELECT DISTINCT id, module, slug, title
       FROM content
+      WHERE module != 'blocks'
       ORDER BY title ASC, slug ASC
     `);
 
