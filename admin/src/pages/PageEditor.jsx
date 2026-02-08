@@ -586,9 +586,9 @@ export default function PageEditor() {
       </div>
 
       {/* Groups Widget */}
-      {page.id && (
+      {page.content_id && (
         <div style={{ marginTop: '2rem' }}>
-          <ContentGroupsWidget contentId={page.id} />
+          <ContentGroupsWidget contentId={page.content_id} />
         </div>
       )}
 

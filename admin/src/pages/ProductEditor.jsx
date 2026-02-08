@@ -459,9 +459,9 @@ export default function ProductEditor() {
       )}
 
       {/* Groups Widget */}
-      {product.id && (
+      {product.content_id && (
         <div style={{ marginTop: '2rem' }}>
-          <ContentGroupsWidget contentId={product.id} />
+          <ContentGroupsWidget contentId={product.content_id} />
         </div>
       )}
 
