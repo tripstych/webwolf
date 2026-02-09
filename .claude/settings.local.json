@@ -17,7 +17,8 @@
       "Bash(npx prisma validate:*)",
       "Bash(npm uninstall:*)",
       "Bash(timeout 15 npm start:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(timeout 5 npm start:*)"
     ]
   }
 }
