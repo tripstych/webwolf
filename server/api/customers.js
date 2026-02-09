@@ -1,39 +1,33 @@
 import { Router } from 'express';
 import { query } from '../db/connection.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { CustomerRepository } from '../db/repositories/CustomerRepository.js';
 
 const router = Router();
+const customerRepo = new CustomerRepository();
 
 /**
  * List all customers (admin only)
  */
 router.get('/', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { search, limit = 50, offset = 0 } = req.query;
+    const { search = '', limit = 50, offset = 0 } = req.query;
 
-    let sql = `
-      SELECT DISTINCT c.id, c.email, c.first_name, c.last_name, c.phone, c.created_at
-      FROM customers c
-      WHERE 1=1
-    `;
-    const params = [];
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
 
-    if (search) {
-      sql += ` AND (
-        c.email LIKE ? OR
-        c.first_name LIKE ? OR
-        c.last_name LIKE ?
-      )`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
-    }
+    const customers = await customerRepo.listWithSearch(search, pageLimit, pageOffset);
+    const total = await customerRepo.countWithSearch(search);
 
-    sql += ` ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), parseInt(offset));
-
-    const customers = await query(sql, params);
-
-    res.json(customers);
+    res.json({
+      data: customers,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
+      }
+    });
   } catch (err) {
     console.error('List customers error:', err);
     res.status(500).json({ error: 'Failed to list customers' });
@@ -45,26 +39,11 @@ router.get('/', requireAuth, requireAdmin, async (req, res) => {
  */
 router.get('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const customer = await customerRepo.getWithOrders(parseInt(req.params.id));
 
-    const customers = await query(
-      'SELECT id, email, first_name, last_name, phone, email_verified, created_at FROM customers WHERE id = ?',
-      [id]
-    );
-
-    if (!customers[0]) {
+    if (!customer) {
       return res.status(404).json({ error: 'Customer not found' });
     }
-
-    const customer = customers[0];
-
-    // Get customer's orders
-    const orders = await query(
-      'SELECT id, order_number, total, payment_status, status, created_at FROM orders WHERE customer_id = ? ORDER BY created_at DESC',
-      [id]
-    );
-
-    customer.orders = orders;
 
     res.json(customer);
   } catch (err) {
