@@ -330,8 +330,7 @@ router.get('/', requireAuth, requireEditor, async (req, res) => {
       params.push(searchTerm, searchTerm);
     }
 
-    sql += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
-    params.push(pageLimit, pageOffset);
+    sql += ` ORDER BY o.created_at DESC LIMIT ${pageLimit} OFFSET ${pageOffset}`;
 
     const orders = await query(sql, params);
 

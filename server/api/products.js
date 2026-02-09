@@ -86,8 +86,7 @@ router.get('/', requireAuth, async (req, res) => {
       params.push(sku);
     }
 
-    sql += ' ORDER BY p.updated_at DESC LIMIT ? OFFSET ?';
-    params.push(pageLimit, pageOffset);
+    sql += ` ORDER BY p.updated_at DESC LIMIT ${pageLimit} OFFSET ${pageOffset}`;
 
     const products = await query(sql, params);
 
