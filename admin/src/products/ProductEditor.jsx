@@ -18,6 +18,7 @@ export default function ProductEditor() {
     template_id: '',
     title: '',
     slug: '',
+    content_type: 'products',
     content: {},
     meta_title: '',
     meta_description: '',

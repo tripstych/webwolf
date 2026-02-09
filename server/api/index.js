@@ -11,7 +11,7 @@ import blocksRoutes from './blocks-prisma.js';
 import contentTypesRoutes from './contentTypes.js';
 import debugRoutes from './debug.js';
 import extensionsRoutes from './extensions.js';
-import productsRoutes from './products.js';
+import productsRoutes from './products-prisma.js';
 import ordersRoutes from './orders.js';
 import cartRoutes from './cart.js';
 import paymentsRoutes from './payments.js';
