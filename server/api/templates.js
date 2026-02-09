@@ -2,46 +2,36 @@ import { Router } from 'express';
 import { query } from '../db/connection.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { scanTemplates, scanBlockTemplates, syncTemplatesToDb, parseTemplate } from '../services/templateParser.js';
+import { TemplateRepository } from '../db/repositories/TemplateRepository.js';
 
 const router = Router();
+const templateRepo = new TemplateRepository();
 
 // List all templates (with optional content_type filter)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { content_type } = req.query;
+    const { content_type, limit = 50, offset = 0 } = req.query;
 
-    let sql = `
-      SELECT t.*, COUNT(p.id) as page_count
-      FROM templates t
-      LEFT JOIN pages p ON t.id = p.template_id
-    `;
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
 
-    const params = [];
-    const conditions = ["t.filename NOT LIKE 'blocks/%'"];
+    const templates = await templateRepo.listWithParsedRegions(
+      { content_type },
+      pageLimit,
+      pageOffset
+    );
 
-    if (content_type) {
-      conditions.push('t.content_type = ?');
-      params.push(content_type);
-    }
+    const total = await templateRepo.countPageTemplates({ content_type });
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    sql += ' GROUP BY t.id ORDER BY t.name';
-
-    const templates = await query(sql, params);
-
-    // Parse JSON regions
-    templates.forEach(template => {
-      if (template.regions) {
-        try {
-          template.regions = JSON.parse(template.regions);
-        } catch (e) {}
+    res.json({
+      data: templates,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
       }
     });
-
-    res.json(templates);
   } catch (err) {
     console.error('List templates error:', err);
     res.status(500).json({ error: 'Failed to list templates' });
@@ -51,18 +41,10 @@ router.get('/', requireAuth, async (req, res) => {
 // Get template by ID (e.g., /api/templates/id/23)
 router.get('/id/:id', requireAuth, async (req, res) => {
   try {
-    const templates = await query('SELECT * FROM templates WHERE id = ?', [req.params.id]);
+    const template = await templateRepo.getWithParsedRegions(parseInt(req.params.id));
 
-    if (!templates[0]) {
+    if (!template) {
       return res.status(404).json({ error: 'Template not found' });
-    }
-
-    const template = templates[0];
-
-    if (template.regions) {
-      try {
-        template.regions = JSON.parse(template.regions);
-      } catch (e) {}
     }
 
     res.json(template);
@@ -76,17 +58,15 @@ router.get('/id/:id', requireAuth, async (req, res) => {
 router.get('/content_type/:contentType', requireAuth, async (req, res) => {
   try {
     const { contentType } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
 
-    const templates = await query(`
-      SELECT t.*, COUNT(p.id) as page_count
-      FROM templates t
-      LEFT JOIN pages p ON t.id = p.template_id
-      WHERE t.content_type = ?
-      GROUP BY t.id
-      ORDER BY t.name
-    `, [contentType]);
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
 
-    // Parse JSON regions
+    const templates = await templateRepo.getByContentType(contentType, pageLimit, pageOffset);
+
+    // Parse regions
     templates.forEach(template => {
       if (template.regions) {
         try {
@@ -95,7 +75,16 @@ router.get('/content_type/:contentType', requireAuth, async (req, res) => {
       }
     });
 
-    res.json(templates);
+    const total = await templateRepo.countByContentType(contentType);
+
+    res.json({
+      data: templates,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
+      }
+    });
   } catch (err) {
     console.error('Get templates error:', err);
     res.status(500).json({ error: 'Failed to get templates' });
@@ -105,14 +94,13 @@ router.get('/content_type/:contentType', requireAuth, async (req, res) => {
 // Get block templates (e.g., /api/templates/content_type/blocks/list)
 router.get('/content_type/blocks/list', requireAuth, async (req, res) => {
   try {
-    const templates = await query(`
-      SELECT t.*, COUNT(b.id) as block_count
-      FROM templates t
-      LEFT JOIN blocks b ON t.id = b.template_id
-      WHERE t.content_type = 'blocks'
-      GROUP BY t.id
-      ORDER BY t.name
-    `);
+    const { limit = 50, offset = 0 } = req.query;
+
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
+
+    const templates = await templateRepo.listBlockTemplates(pageLimit, pageOffset);
 
     // Parse JSON regions
     templates.forEach(template => {
@@ -123,7 +111,16 @@ router.get('/content_type/blocks/list', requireAuth, async (req, res) => {
       }
     });
 
-    res.json(templates);
+    const total = await templateRepo.countBlockTemplates();
+
+    res.json({
+      data: templates,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
+      }
+    });
   } catch (err) {
     console.error('List block templates error:', err);
     res.status(500).json({ error: 'Failed to list block templates' });
@@ -204,31 +201,24 @@ router.get('/parse/:filename(*)', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, description, regions } = req.body;
-    
-    const updates = [];
-    const params = [];
-    
-    if (name !== undefined) {
-      updates.push('name = ?');
-      params.push(name);
-    }
-    if (description !== undefined) {
-      updates.push('description = ?');
-      params.push(description);
-    }
-    if (regions !== undefined) {
-      updates.push('regions = ?');
-      params.push(JSON.stringify(regions));
-    }
-    
-    if (updates.length === 0) {
+
+    // Check if any fields to update
+    const hasUpdates = name !== undefined || description !== undefined || regions !== undefined;
+
+    if (!hasUpdates) {
       return res.status(400).json({ error: 'No fields to update' });
     }
-    
-    params.push(req.params.id);
-    
-    await query(`UPDATE templates SET ${updates.join(', ')} WHERE id = ?`, params);
-    
+
+    const template = await templateRepo.updateMetadata(parseInt(req.params.id), {
+      name,
+      description,
+      regions
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Update template error:', err);
@@ -239,17 +229,22 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
 // Delete template (only if no pages use it)
 router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
-    // Check if any pages use this template
-    const pages = await query('SELECT COUNT(*) as count FROM pages WHERE template_id = ?', [req.params.id]);
-    
-    if (pages[0].count > 0) {
-      return res.status(400).json({ 
+    const templateId = parseInt(req.params.id);
+
+    // Check if template is in use
+    const pageCount = await templateRepo.countPageUsage(templateId);
+    const blockCount = await templateRepo.countBlockUsage(templateId);
+
+    if (pageCount > 0 || blockCount > 0) {
+      return res.status(400).json({
         error: 'Cannot delete template that is in use',
-        pageCount: pages[0].count 
+        pageCount,
+        blockCount
       });
     }
-    
-    await query('DELETE FROM templates WHERE id = ?', [req.params.id]);
+
+    // Delete template
+    await templateRepo.delete(templateId);
     res.json({ success: true });
   } catch (err) {
     console.error('Delete template error:', err);

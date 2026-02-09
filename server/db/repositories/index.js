@@ -4,6 +4,7 @@ export { OrderRepository } from './OrderRepository.js';
 export { CustomerRepository } from './CustomerRepository.js';
 export { PageRepository } from './PageRepository.js';
 export { BlockRepository } from './BlockRepository.js';
+export { TemplateRepository } from './TemplateRepository.js';
 
 // Convenience exports for common usage
 export const repositories = {
