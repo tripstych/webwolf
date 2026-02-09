@@ -1,32 +1,17 @@
 import { Router } from 'express';
 import slugify from 'slugify';
+import { ProductRepository } from '../db/repositories/ProductRepository.js';
 import { query } from '../db/connection.js';
 import { requireAuth, requireEditor } from '../middleware/auth.js';
 import registry from '../services/extensionRegistry.js';
 
 const router = Router();
+const productRepo = new ProductRepository();
 
 /**
- * Helper: Get product with variants and content
+ * Helper: Parse product content JSON
  */
-async function getProductWithVariants(productId) {
-  const products = await query(
-    `SELECT p.*,
-            c.title as content_title,
-            COALESCE(c.data, '{}') as content_data
-     FROM products p
-     LEFT JOIN content c ON p.content_id = c.id
-     WHERE p.id = ?`,
-    [productId]
-  );
-
-  if (!products[0]) {
-    return null;
-  }
-
-  const product = products[0];
-
-  // Parse content JSON
+function parseProductContent(product) {
   try {
     product.content = JSON.parse(product.content_data || '{}');
   } catch (e) {
@@ -38,16 +23,8 @@ async function getProductWithVariants(productId) {
   product.title = product.content_title || 'Untitled';
   delete product.content_title;
 
-  // Get variants
-  const variants = await query(
-    'SELECT * FROM product_variants WHERE product_id = ? ORDER BY position ASC',
-    [productId]
-  );
-
-  product.variants = variants;
   return product;
 }
-
 
 /**
  * List products
@@ -60,77 +37,25 @@ router.get('/', requireAuth, async (req, res) => {
     const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
     const pageOffset = Math.max(0, parseInt(offset) || 0);
 
-    let sql = `
-      SELECT p.*,
-             c.title as content_title,
-             COALESCE(c.data, '{}') as content_data
-      FROM products p
-      LEFT JOIN content c ON p.content_id = c.id
-      WHERE 1=1
-    `;
-    const params = [];
+    // Get products using repository
+    const products = await productRepo.listWithContent(
+      { status, search, sku },
+      pageLimit,
+      pageOffset
+    );
 
-    if (status) {
-      sql += ' AND p.status = ?';
-      params.push(status);
-    }
-
-    if (search) {
-      sql += ' AND p.sku LIKE ?';
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm);
-    }
-
-    if (sku) {
-      sql += ' AND p.sku = ?';
-      params.push(sku);
-    }
-
-    sql += ` ORDER BY p.updated_at DESC LIMIT ${pageLimit} OFFSET ${pageOffset}`;
-
-    const products = await query(sql, params);
-
-    // Parse content JSON for each product
-    products.forEach(product => {
-      try {
-        product.content = JSON.parse(product.content_data || '{}');
-      } catch (e) {
-        product.content = {};
-      }
-      delete product.content_data;
-
-      // Get title from content table
-      product.title = product.content_title || 'Untitled';
-      delete product.content_title;
-    });
+    // Parse content for each product
+    products.forEach(parseProductContent);
 
     // Get total count
-    let countSql = 'SELECT COUNT(*) as count FROM products p WHERE 1=1';
-    const countParams = [];
-
-    if (status) {
-      countSql += ' AND p.status = ?';
-      countParams.push(status);
-    }
-    if (search) {
-      countSql += ' AND p.sku LIKE ?';
-      const searchTerm = `%${search}%`;
-      countParams.push(searchTerm);
-    }
-    if (sku) {
-      countSql += ' AND p.sku = ?';
-      countParams.push(sku);
-    }
-
-    const countResult = await query(countSql, countParams);
-    const total = countResult[0]?.count || 0;
+    const total = await productRepo.countWithFilters({ status, search, sku });
 
     res.json({
       data: products,
       pagination: {
         total,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
+        limit: pageLimit,
+        offset: pageOffset
       }
     });
   } catch (err) {
@@ -144,10 +69,22 @@ router.get('/', requireAuth, async (req, res) => {
  */
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const product = await getProductWithVariants(parseInt(req.params.id));
+    const product = await productRepo.getWithVariants(parseInt(req.params.id));
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Fetch content data separately
+    if (product.content_id) {
+      const content = await query('SELECT data FROM content WHERE id = ?', [product.content_id]);
+      if (content[0]) {
+        try {
+          product.content = JSON.parse(content[0].data || '{}');
+        } catch (e) {
+          product.content = {};
+        }
+      }
     }
 
     res.json(product);
@@ -167,10 +104,6 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       title,
       slug,
       content,
-      meta_title,
-      meta_description,
-      og_image,
-      canonical_url,
       sku,
       price,
       compare_at_price,
@@ -193,54 +126,44 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       });
     }
 
-    // Check SKU uniqueness
-    const existing = await query('SELECT id FROM products WHERE sku = ?', [sku]);
-    if (existing.length > 0) {
+    // Check SKU uniqueness using repository
+    if (await productRepo.skuExists(sku)) {
       return res.status(400).json({ error: `SKU "${sku}" already exists` });
     }
 
     // Generate slug if not provided
     let productSlug = slug || slugify(title, { lower: true, strict: true });
 
-    // Prepend /products/ if not already present (keeps slug globally unique)
+    // Prepend /products/ if not already present
     if (!productSlug.startsWith('/products/')) {
       productSlug = productSlug.replace(/^\/+/, '');
       productSlug = '/products/' + productSlug;
     }
 
-    // Create content record for product
+    // Create content record
     const contentResult = await query(
       'INSERT INTO content (module, title, slug, data) VALUES (?, ?, ?, ?)',
       ['products', title, productSlug, JSON.stringify(content || {})]
     );
     const contentId = contentResult.insertId;
 
-    // Create product
-    const result = await query(
-      `INSERT INTO products (
-        template_id, content_id, sku, price, compare_at_price, cost, inventory_quantity,
-        inventory_tracking, allow_backorder, weight, weight_unit,
-        requires_shipping, taxable, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        template_id,
-        contentId,
-        sku,
-        price,
-        compare_at_price || null,
-        cost || null,
-        inventory_quantity || 0,
-        inventory_tracking !== false,
-        allow_backorder || false,
-        weight || null,
-        weight_unit || 'lb',
-        requires_shipping !== false,
-        taxable !== false,
-        status || 'draft'
-      ]
-    );
-
-    const productId = result.insertId;
+    // Create product using repository
+    const productId = await productRepo.create({
+      template_id,
+      content_id: contentId,
+      sku,
+      price,
+      compare_at_price: compare_at_price || null,
+      cost: cost || null,
+      inventory_quantity: inventory_quantity || 0,
+      inventory_tracking: inventory_tracking !== false,
+      allow_backorder: allow_backorder || false,
+      weight: weight || null,
+      weight_unit: weight_unit || 'lb',
+      requires_shipping: requires_shipping !== false,
+      taxable: taxable !== false,
+      status: status || 'draft'
+    });
 
     // Create variants if provided
     if (variants && variants.length > 0) {
@@ -273,8 +196,7 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
       }
     }
 
-    const product = await getProductWithVariants(productId);
-
+    const product = await productRepo.getWithVariants(productId);
     res.status(201).json(product);
   } catch (err) {
     console.error('Create product error:', err);
@@ -293,10 +215,6 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       title,
       slug,
       content,
-      meta_title,
-      meta_description,
-      og_image,
-      canonical_url,
       sku,
       price,
       compare_at_price,
@@ -313,13 +231,13 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
     } = req.body;
 
     // Get existing product
-    const existing = await query('SELECT content_id FROM products WHERE id = ?', [productId]);
-    if (!existing[0]) {
+    const existing = await productRepo.findById(productId);
+    if (!existing) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
     // Handle content update
-    let contentIdToSet = existing[0].content_id;
+    let contentIdToSet = existing.content_id;
 
     if (content !== undefined || title !== undefined || slug !== undefined) {
       // Get existing content data
@@ -381,79 +299,35 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       }
     }
 
-    // Update product
-    const updates = [];
-    const params = [];
+    // Build product updates
+    const updates = {};
 
-    if (template_id !== undefined) {
-      updates.push('template_id = ?');
-      params.push(template_id);
-    }
+    if (template_id !== undefined) updates.template_id = template_id;
 
     if (sku !== undefined) {
       // Check SKU uniqueness (excluding current product)
-      const existing = await query('SELECT id FROM products WHERE sku = ? AND id != ?', [sku, productId]);
-      if (existing.length > 0) {
+      if (await productRepo.skuExists(sku, productId)) {
         return res.status(400).json({ error: `SKU "${sku}" already exists` });
       }
-      updates.push('sku = ?');
-      params.push(sku);
+      updates.sku = sku;
     }
 
-    if (price !== undefined) {
-      updates.push('price = ?');
-      params.push(price);
-    }
-    if (compare_at_price !== undefined) {
-      updates.push('compare_at_price = ?');
-      params.push(compare_at_price);
-    }
-    if (cost !== undefined) {
-      updates.push('cost = ?');
-      params.push(cost);
-    }
-    if (inventory_quantity !== undefined) {
-      updates.push('inventory_quantity = ?');
-      params.push(inventory_quantity);
-    }
-    if (inventory_tracking !== undefined) {
-      updates.push('inventory_tracking = ?');
-      params.push(inventory_tracking);
-    }
-    if (allow_backorder !== undefined) {
-      updates.push('allow_backorder = ?');
-      params.push(allow_backorder);
-    }
-    if (weight !== undefined) {
-      updates.push('weight = ?');
-      params.push(weight);
-    }
-    if (weight_unit !== undefined) {
-      updates.push('weight_unit = ?');
-      params.push(weight_unit);
-    }
-    if (requires_shipping !== undefined) {
-      updates.push('requires_shipping = ?');
-      params.push(requires_shipping);
-    }
-    if (taxable !== undefined) {
-      updates.push('taxable = ?');
-      params.push(taxable);
-    }
-    if (status !== undefined) {
-      updates.push('status = ?');
-      params.push(status);
-    }
+    if (price !== undefined) updates.price = price;
+    if (compare_at_price !== undefined) updates.compare_at_price = compare_at_price;
+    if (cost !== undefined) updates.cost = cost;
+    if (inventory_quantity !== undefined) updates.inventory_quantity = inventory_quantity;
+    if (inventory_tracking !== undefined) updates.inventory_tracking = inventory_tracking;
+    if (allow_backorder !== undefined) updates.allow_backorder = allow_backorder;
+    if (weight !== undefined) updates.weight = weight;
+    if (weight_unit !== undefined) updates.weight_unit = weight_unit;
+    if (requires_shipping !== undefined) updates.requires_shipping = requires_shipping;
+    if (taxable !== undefined) updates.taxable = taxable;
+    if (status !== undefined) updates.status = status;
+    if (content !== undefined) updates.content_id = contentIdToSet || null;
 
-    if (content !== undefined) {
-      updates.push('content_id = ?');
-      params.push(contentIdToSet || null);
-    }
-
-    if (updates.length > 0) {
-      params.push(productId);
-      const sql = `UPDATE products SET ${updates.join(', ')} WHERE id = ?`;
-      await query(sql, params);
+    // Update product using repository
+    if (Object.keys(updates).length > 0) {
+      await productRepo.update(productId, updates);
     }
 
     // Handle variants
@@ -533,8 +407,7 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       }
     }
 
-    const product = await getProductWithVariants(productId);
-
+    const product = await productRepo.getWithVariants(productId);
     res.json(product);
   } catch (err) {
     console.error('Update product error:', err);
@@ -549,13 +422,13 @@ router.delete('/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     const productId = parseInt(req.params.id);
 
-    const existing = await query('SELECT id FROM products WHERE id = ?', [productId]);
-    if (!existing[0]) {
+    const existing = await productRepo.findById(productId);
+    if (!existing) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Delete product (cascade deletes variants and content)
-    await query('DELETE FROM products WHERE id = ?', [productId]);
+    // Delete product using repository (cascade deletes variants and content)
+    await productRepo.delete(productId);
 
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
@@ -578,25 +451,22 @@ router.post('/:id/inventory', requireAuth, requireEditor, async (req, res) => {
       });
     }
 
-    let sql;
-    const params = [];
+    let product;
 
     if (quantity !== undefined) {
-      sql = 'UPDATE products SET inventory_quantity = ? WHERE id = ?';
-      params.push(quantity, productId);
+      // Set exact quantity
+      product = await productRepo.update(productId, { inventory_quantity: quantity });
     } else {
-      sql = 'UPDATE products SET inventory_quantity = inventory_quantity + ? WHERE id = ?';
-      params.push(adjustment, productId);
+      // Adjust by amount
+      product = await productRepo.adjustInventory(productId, adjustment);
     }
 
-    const result = await query(sql, params);
-
-    if (result.affectedRows === 0) {
+    if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const product = await getProductWithVariants(productId);
-    res.json(product);
+    const productWithVariants = await productRepo.getWithVariants(productId);
+    res.json(productWithVariants);
   } catch (err) {
     console.error('Adjust inventory error:', err);
     res.status(500).json({ error: 'Failed to adjust inventory' });
