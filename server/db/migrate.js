@@ -29,13 +29,13 @@ const migrations = [
   // Content table (stores all rendered content as JSON documents)
   `CREATE TABLE IF NOT EXISTS content (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,
+    module VARCHAR(50) NOT NULL,
     title VARCHAR(255),
     slug VARCHAR(255) UNIQUE,
     data LONGTEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_type (type)
+    INDEX idx_module (module)
   )`,
 
   // Pages table
