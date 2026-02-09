@@ -56,6 +56,10 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const { status, search, sku, limit = 50, offset = 0 } = req.query;
 
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
+
     let sql = `
       SELECT p.*,
              c.title as content_title,
@@ -83,7 +87,7 @@ router.get('/', requireAuth, async (req, res) => {
     }
 
     sql += ' ORDER BY p.updated_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(pageLimit, pageOffset);
 
     const products = await query(sql, params);
 

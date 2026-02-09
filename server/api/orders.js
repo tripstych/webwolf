@@ -302,6 +302,10 @@ router.get('/', requireAuth, requireEditor, async (req, res) => {
   try {
     const { status, payment_status, search, limit = 50, offset = 0 } = req.query;
 
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
+
     let sql = `
       SELECT o.*, c.email as customer_email
       FROM orders o
@@ -327,7 +331,7 @@ router.get('/', requireAuth, requireEditor, async (req, res) => {
     }
 
     sql += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    params.push(pageLimit, pageOffset);
 
     const orders = await query(sql, params);
 
