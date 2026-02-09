@@ -8,10 +8,27 @@ export default function CustomerList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [siteUrl, setSiteUrl] = useState('http://localhost:3000');
 
   useEffect(() => {
     loadCustomers();
+    loadSiteUrl();
   }, []);
+
+  const loadSiteUrl = async () => {
+    try {
+      const response = await fetch('/api/settings/public');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.site_url) {
+          setSiteUrl(data.site_url);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load site URL:', err);
+      // Use default fallback
+    }
+  };
 
   const loadCustomers = async () => {
     try {
@@ -88,6 +105,11 @@ export default function CustomerList() {
           onChange={(e) => setSearch(e.target.value)}
           className="input w-full"
         />
+      </div>
+      <div className="flex justify-end">
+        <a href={`${siteUrl}/customer/login`} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+          Customer Login
+        </a>
       </div>
 
       <div className="card">
