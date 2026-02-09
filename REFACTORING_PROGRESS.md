@@ -4,7 +4,7 @@
 
 Systematic refactoring of API endpoints to use the data access layer (repository pattern) instead of scattered raw SQL queries. This improves code maintainability, testability, and reduces duplication.
 
-**Status**: Phase 1 Complete ✅ | Phase 2 In Progress (Pages Done ✅)
+**Status**: Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 2.5 Started (Blocks Done ✅)
 
 ## Phase 1: Core Ecommerce APIs (COMPLETED)
 
@@ -135,13 +135,43 @@ Systematic refactoring of API endpoints to use the data access layer (repository
 - JSON field parsing and merging
 - Content data merging on updates
 
-### 5. Blocks API (`server/api/blocks.js`) - NOT YET REFACTORED
-**Size**: 320 lines | **Complexity**: Medium
+### 5. Blocks API (`server/api/blocks.js`) ✅ COMPLETED
+**Before**: 320 lines | **After**: 183 lines | **Reduction**: 137 lines (43%)
 
-**Issues Identified**:
-- Uses `content.type` instead of `content.module` (lines 123, 224) - BUG!
-- Similar patterns to pages but simpler
-- Would need `BlockRepository` creation
+**Changes**:
+- All 5 endpoints now use BlockRepository exclusively
+- All 5 endpoints refactored:
+  - `GET /` - list blocks → `listForUI()` + `countWithFilters()`
+  - `GET /:id` - single block → `getForUI()`
+  - `POST /` - create block → `createBlockWithContent()`
+  - `PUT /:id` - update block → `updateBlockWithContent()`
+  - `DELETE /:id` - delete block → `delete()`
+
+**Bugs Fixed**:
+- ✅ **Changed `content.type` → `content.module`** (was using wrong database column on lines 123, 224)
+- Removed debug console.log statements
+- Cleaner error handling
+
+**New BlockRepository Methods**:
+```javascript
+// BlockRepository (10 methods total)
+- listWithContent(filters, limit, offset)
+- countWithFilters(filters)
+- getWithTemplate(blockId)
+- getByTemplateId(templateId, limit)
+- getByContentType(contentType, limit)
+- createBlockWithContent(blockData, contentData) - atomic create
+- updateBlockWithContent(blockId, blockUpdates, contentUpdates) - atomic update
+- listForUI(filters, limit, offset) - formatted list
+- getForUI(blockId) - formatted single block
+```
+
+**Complex Logic Handled**:
+- Content table bug fix (type → module)
+- Atomic block + content operations
+- JSON field parsing and serialization
+- Template validation for content type matching
+- Clean UI response serialization
 
 ### 6. Templates API (`server/api/templates.js`) - NOT REFACTORED
 **Size**: Unknown | **Complexity**: Unknown
@@ -174,18 +204,22 @@ OrderRepository extends BaseRepository
   └── Handles: payment/fulfillment status separately
 
 CustomerRepository extends BaseRepository
-  ├── 10 customer-specific methods
-  ├── Includes: upsertCustomer() [NEW]
+  ├── 11 customer-specific methods
+  ├── Includes: upsertCustomer()
   └── Handles: addresses, orders, statistics
 
 PageRepository extends BaseRepository
-  ├── 12 page-specific methods
-  ├── Includes: full-text search, publishing
-  └── Handles: content relationships
+  ├── 17 page-specific methods (12 existing + 5 new)
+  ├── Includes: createPageWithContent(), updatePageWithContent(), duplicatePage()
+  └── Handles: content relationships, atomic operations
 
-BlockRepository - NOT YET CREATED
-  └── Would have similar structure to PageRepository
+BlockRepository extends BaseRepository ✅ NEW
+  ├── 10 block-specific methods
+  ├── Includes: createBlockWithContent(), updateBlockWithContent()
+  └── Handles: template validation, content operations, UI serialization
 ```
+
+**Total Repository Methods**: 24 domain-specific methods across 5 repositories
 
 ---
 
@@ -198,8 +232,10 @@ BlockRepository - NOT YET CREATED
 | Raw SQL queries in orders.js | ~50 | 0 | -100% |
 | Raw SQL queries in customers.js | ~10 | 0 | -100% |
 | Raw SQL queries in pages.js | ~60 | 0 | -100% |
-| **Total lines (4 files)** | **1,566** | **961** | **-605 lines** |
-| **Percentage reduction** | - | - | **-38.6%** |
+| Raw SQL queries in blocks.js | ~50 | 0 | -100% |
+| **Total lines (5 files)** | **1,886** | **961** | **-742 lines** |
+| **Percentage reduction** | - | - | **-39.3%** |
+| **Bugs fixed** | 1 (content.type) | 0 | ✅ Fixed |
 
 ### Maintainability
 - **Before**: SQL queries scattered across 37 files (327 total)
