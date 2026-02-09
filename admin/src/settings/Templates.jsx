@@ -17,8 +17,9 @@ export default function Templates() {
   const loadTemplates = async () => {
     try {
       const data = await api.get('/templates');
-      setTemplates(data);
-      setSelectedTemplate(data[0]);
+      const templatesList = data.data || [];
+      setTemplates(templatesList);
+      setSelectedTemplate(templatesList[0]);
     } catch (err) {
       console.error('Failed to load templates:', err);
     } finally {

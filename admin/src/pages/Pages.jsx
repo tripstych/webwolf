@@ -29,7 +29,7 @@ export default function Pages() {
       const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       const data = await api.get(`/pages?${params}`);
-      setPages(data);
+      setPages(data.data || []);
     } catch (err) {
       console.error('Failed to load pages:', err);
     } finally {

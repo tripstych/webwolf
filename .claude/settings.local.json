@@ -10,7 +10,13 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npm run migrate:customers:*)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(npx prisma db pull:*)",
+      "Bash(timeout 10 npm start:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(timeout 15 npm start:*)"
     ]
   }
 }

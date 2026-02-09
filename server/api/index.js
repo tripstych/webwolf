@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import authRoutes from './auth.js';
 import customerAuthRoutes from './customer-auth.js';
-import pagesRoutes from './pages.js';
+import pagesRoutes from './pages-prisma.js';
 import templatesRoutes from './templates.js';
 import mediaRoutes from './media.js';
 import settingsRoutes from './settings.js';
 import seoRoutes from './seo.js';
 import menusRoutes from './menus.js';
-import blocksRoutes from './blocks.js';
+import blocksRoutes from './blocks-prisma.js';
 import contentTypesRoutes from './contentTypes.js';
 import debugRoutes from './debug.js';
 import extensionsRoutes from './extensions.js';

@@ -36,7 +36,7 @@ export default function ContentList() {
       }
 
       const data = await api.get(endpoint, params);
-      setItems(data);
+      setItems(data.data || []);
     } catch (err) {
       console.error('Failed to load items:', err);
     } finally {

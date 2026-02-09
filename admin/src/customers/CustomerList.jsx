@@ -42,7 +42,7 @@ export default function CustomerList() {
 
       if (response.ok) {
         const data = await response.json();
-        setCustomers(data);
+        setCustomers(data.data || []);
       } else if (response.status === 404) {
         // Endpoint doesn't exist yet, show empty state
         setCustomers([]);

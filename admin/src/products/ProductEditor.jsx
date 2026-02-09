@@ -86,7 +86,7 @@ export default function ProductEditor() {
       if (!response.ok) throw new Error('Failed to load templates');
       const data = await response.json();
       console.log('[ProductEditor] Templates loaded:', data);
-      setTemplates(data);
+      setTemplates(data.data || []);
     } catch (err) {
       console.error('[ProductEditor] Failed to load templates:', err);
       setError('Failed to load templates');

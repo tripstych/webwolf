@@ -37,6 +37,7 @@ export default function BlockEditor() {
     template_id: '',
     name: '',
     slug: '',
+    content_type: 'blocks',
     content: {}
   });
 
@@ -52,7 +53,7 @@ export default function BlockEditor() {
   const loadTemplates = async () => {
     try {
       const data = await api.get('/templates/content_type/blocks/list');
-      setTemplates(data);
+      setTemplates(data.data || []);
     } catch (err) {
       console.error('Failed to load templates:', err);
     }

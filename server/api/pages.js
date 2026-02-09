@@ -45,7 +45,16 @@ router.get('/', requireAuth, async (req, res) => {
       }
     });
 
-    res.json(pages);
+    const total = await pageRepo.countWithFilters({ status, template_id, content_type });
+
+    res.json({
+      data: pages,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
+      }
+    });
   } catch (err) {
     console.error('List pages error:', err);
     res.status(500).json({ error: 'Failed to list pages' });

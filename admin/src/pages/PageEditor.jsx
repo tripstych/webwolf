@@ -39,6 +39,7 @@ export default function PageEditor() {
     template_id: '',
     title: '',
     slug: '',
+    content_type: 'pages',
     status: 'draft',
     content: {},
     meta_title: '',
@@ -67,7 +68,7 @@ export default function PageEditor() {
   const loadTemplates = async () => {
     try {
       const data = await api.get('/templates/content_type/pages');
-      setTemplates(data);
+      setTemplates(data.data || []);
     } catch (err) {
       console.error('Failed to load templates:', err);
     }

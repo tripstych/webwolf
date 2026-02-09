@@ -5,3 +5,5 @@ uploads/*
 admin/dist/
 *.log
 .DS_Store
+
+/generated/prisma

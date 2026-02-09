@@ -45,7 +45,7 @@ export default function ContentEditor() {
   const loadTemplates = async () => {
     try {
       const data = await api.get(`/templates/content_type/${contentTypeName}`);
-      setTemplates(data);
+      setTemplates(data.data || []);
     } catch (err) {
       console.error('Failed to load templates:', err);
     }

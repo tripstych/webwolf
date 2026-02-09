@@ -22,7 +22,7 @@ export default function Blocks() {
   const loadBlocks = async () => {
     try {
       const data = await api.get('/blocks');
-      setBlocks(data);
+      setBlocks(data.data || []);
     } catch (err) {
       console.error('Failed to load blocks:', err);
     } finally {

@@ -31,7 +31,9 @@
     "vite": "^7.3.1"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.2",
     "concurrently": "^8.2.2",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "prisma": "^6.19.2"
   }
 }
