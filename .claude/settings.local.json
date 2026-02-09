@@ -9,7 +9,8 @@
       "Bash(git reset:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npm run migrate:customers:*)"
+      "Bash(npm run migrate:customers:*)",
+      "Bash(mysql:*)"
     ]
   }
 }
