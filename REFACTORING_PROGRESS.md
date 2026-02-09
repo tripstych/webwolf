@@ -4,7 +4,7 @@
 
 Systematic refactoring of API endpoints to use the data access layer (repository pattern) instead of scattered raw SQL queries. This improves code maintainability, testability, and reduces duplication.
 
-**Status**: Phase 1 Complete ✅ | Phase 2 In Progress
+**Status**: Phase 1 Complete ✅ | Phase 2 In Progress (Pages Done ✅)
 
 ## Phase 1: Core Ecommerce APIs (COMPLETED)
 
@@ -104,21 +104,36 @@ Systematic refactoring of API endpoints to use the data access layer (repository
 
 ## Phase 2: Content Management APIs (IN PROGRESS)
 
-### 4. Pages API (`server/api/pages.js`) - NOT YET REFACTORED
-**Size**: 480 lines | **Complexity**: High
+### 4. Pages API (`server/api/pages.js`) ✅ COMPLETED
+**Before**: 480 lines | **After**: 315 lines | **Reduction**: 165 lines (34%)
 
-**Why Complex**:
-- Complex content/page table relationships
-- Handles both creation and updating of related records
-- Template validation logic
-- Slug normalization
-- Page duplication feature
-- SEO field management
+**Changes**:
+- All 6 endpoints now use PageRepository exclusively
+- All 6 endpoints refactored:
+  - `GET /` - list pages with filters → `listWithTemplate()`
+  - `GET /:id` - single page → `getWithTemplate()`
+  - `POST /` - create page → `createPageWithContent()`
+  - `PUT /:id` - update page → `updatePageWithContent()`
+  - `DELETE /:id` - delete page → `delete()`
+  - `POST /:id/duplicate` - duplicate → `duplicatePage()`
 
-**Candidates for Enhancement**:
-- Create `PageRepository.createPageWithContent()`
-- Create `PageRepository.updatePageWithContent()`
-- Create `PageRepository.duplicatePage()`
+**New Repository Methods**:
+```javascript
+// PageRepository (5 new methods)
+- getWithTemplate(pageId) - page with template data
+- listWithTemplate(filters, limit, offset) - list with full data
+- createPageWithContent(pageData, contentData) - atomic create
+- updatePageWithContent(pageId, pageUpdates, contentUpdates) - atomic update
+- duplicatePage(pageId, userId) - clone page with new slug
+```
+
+**Complex Logic Handled**:
+- Content/page atomic operations (both succeed or both fail)
+- Slug normalization and validation
+- Template validation for content type matching
+- Published_at timestamp handling
+- JSON field parsing and merging
+- Content data merging on updates
 
 ### 5. Blocks API (`server/api/blocks.js`) - NOT YET REFACTORED
 **Size**: 320 lines | **Complexity**: Medium
@@ -182,7 +197,9 @@ BlockRepository - NOT YET CREATED
 | Raw SQL queries in products.js | ~40 | 0 | -100% |
 | Raw SQL queries in orders.js | ~50 | 0 | -100% |
 | Raw SQL queries in customers.js | ~10 | 0 | -100% |
-| Total lines (3 files) | 1,086 | 811 | -375 lines |
+| Raw SQL queries in pages.js | ~60 | 0 | -100% |
+| **Total lines (4 files)** | **1,566** | **961** | **-605 lines** |
+| **Percentage reduction** | - | - | **-38.6%** |
 
 ### Maintainability
 - **Before**: SQL queries scattered across 37 files (327 total)
