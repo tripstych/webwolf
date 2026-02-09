@@ -253,11 +253,11 @@ router.get('/hierarchy', requireAuth, async (req, res) => {
     const groups = await query(`
       WITH RECURSIVE group_tree AS (
         SELECT id, parent_id, name, created_at, updated_at, 0 as level
-        FROM \`groups\`
+        FROM `groups`
         WHERE parent_id IS NULL
         UNION ALL
         SELECT g.id, g.parent_id, g.name, g.created_at, g.updated_at, gt.level + 1
-        FROM \`groups\` g
+        FROM `groups` g
         JOIN group_tree gt ON g.parent_id = gt.id
       )
       SELECT * FROM group_tree
@@ -286,7 +286,7 @@ router.get('/content/:content_id/groups', requireAuth, async (req, res) => {
 
     const groups = await query(`
       SELECT g.id, g.parent_id, g.name
-      FROM \`groups\` g
+      FROM `groups` g
       JOIN content_groups cg ON g.id = cg.group_id
       WHERE cg.content_id = ?
       ORDER BY g.name ASC

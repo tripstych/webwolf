@@ -316,13 +316,13 @@ const migrations = [
   )`,
 
   // Groups table (hierarchical content groups)
-  `CREATE TABLE IF NOT EXISTS \`groups\` (
+  `CREATE TABLE IF NOT EXISTS `groups` (
     id INT AUTO_INCREMENT PRIMARY KEY,
     parent_id INT NULL,
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES \`groups\`(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     INDEX idx_parent_id (parent_id)
   )`,
 
@@ -332,7 +332,7 @@ const migrations = [
     group_id INT NOT NULL,
     content_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES \`groups\`(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     FOREIGN KEY (content_id) REFERENCES content(id) ON DELETE CASCADE,
     UNIQUE KEY unique_group_content (group_id, content_id),
     INDEX idx_group_id (group_id),
