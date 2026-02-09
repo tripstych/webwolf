@@ -9,8 +9,8 @@ const router = Router();
  */
 async function getGroupTree(parentId = null) {
   const sql = parentId === null
-    ? 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id IS NULL ORDER BY name ASC'
-    : 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id = ? ORDER BY name ASC';
+    ? 'SELECT id, parent_id, name, created_at, updated_at FROM `groups` WHERE parent_id IS NULL ORDER BY name ASC'
+    : 'SELECT id, parent_id, name, created_at, updated_at FROM `groups` WHERE parent_id = ? ORDER BY name ASC';
 
   const params = parentId === null ? [] : [parentId];
   const groups = await query(sql, params);
@@ -36,7 +36,7 @@ router.get('/', requireAuth, async (req, res) => {
       groups = await getGroupTree();
     } else {
       // Otherwise just get direct children
-      const sql = 'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE parent_id = ? ORDER BY name ASC';
+      const sql = 'SELECT id, parent_id, name, created_at, updated_at FROM `groups` WHERE parent_id = ? ORDER BY name ASC';
       groups = await query(sql, [parent_id]);
     }
 
@@ -56,7 +56,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     // Get group details
     const groups = await query(
-      'SELECT id, parent_id, name, created_at, updated_at FROM groups WHERE id = ?',
+      'SELECT id, parent_id, name, created_at, updated_at FROM `groups` WHERE id = ?',
       [id]
     );
 
@@ -77,7 +77,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     // Get child groups
     const children = await query(
-      'SELECT id, name FROM groups WHERE parent_id = ? ORDER BY name ASC',
+      'SELECT id, name FROM `groups` WHERE parent_id = ? ORDER BY name ASC',
       [id]
     );
 
@@ -104,7 +104,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     const result = await query(
-      'INSERT INTO groups (parent_id, name) VALUES (?, ?)',
+      'INSERT INTO `groups` (parent_id, name) VALUES (?, ?)',
       [parent_id || null, name.trim()]
     );
 
@@ -134,7 +134,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // Check if group exists
-    const groups = await query('SELECT id FROM groups WHERE id = ?', [id]);
+    const groups = await query('SELECT id FROM `groups` WHERE id = ?', [id]);
     if (!groups[0]) {
       return res.status(404).json({ error: 'Group not found' });
     }
@@ -145,7 +145,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     await query(
-      'UPDATE groups SET name = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE `groups` SET name = ?, parent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [name.trim(), parent_id || null, id]
     );
 
@@ -169,12 +169,12 @@ router.delete('/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
 
     // Check if group exists
-    const groups = await query('SELECT id FROM groups WHERE id = ?', [id]);
+    const groups = await query('SELECT id FROM `groups` WHERE id = ?', [id]);
     if (!groups[0]) {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    await query('DELETE FROM groups WHERE id = ?', [id]);
+    await query('DELETE FROM `groups` WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting group:', err);
@@ -195,7 +195,7 @@ router.post('/:id/content', requireAuth, async (req, res) => {
     }
 
     // Check if group exists
-    const groups = await query('SELECT id FROM groups WHERE id = ?', [id]);
+    const groups = await query('SELECT id FROM `groups` WHERE id = ?', [id]);
     if (!groups[0]) {
       return res.status(404).json({ error: 'Group not found' });
     }
@@ -253,11 +253,11 @@ router.get('/hierarchy', requireAuth, async (req, res) => {
     const groups = await query(`
       WITH RECURSIVE group_tree AS (
         SELECT id, parent_id, name, created_at, updated_at, 0 as level
-        FROM groups
+        FROM \`groups\`
         WHERE parent_id IS NULL
         UNION ALL
         SELECT g.id, g.parent_id, g.name, g.created_at, g.updated_at, gt.level + 1
-        FROM groups g
+        FROM \`groups\` g
         JOIN group_tree gt ON g.parent_id = gt.id
       )
       SELECT * FROM group_tree
@@ -286,7 +286,7 @@ router.get('/content/:content_id/groups', requireAuth, async (req, res) => {
 
     const groups = await query(`
       SELECT g.id, g.parent_id, g.name
-      FROM groups g
+      FROM \`groups\` g
       JOIN content_groups cg ON g.id = cg.group_id
       WHERE cg.content_id = ?
       ORDER BY g.name ASC

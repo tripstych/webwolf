@@ -571,7 +571,7 @@ async function seedDemo() {
     console.log('🏷️ Creating groups...');
 
     const groupResult = await query(
-      `INSERT INTO groups (name) VALUES (?)`,
+      `INSERT INTO \`groups\` (name) VALUES (?)`,
       ['Featured Products']
     );
 
