@@ -2,42 +2,36 @@ import express from 'express';
 import { query } from '../db/connection.js';
 import { requireAuth, requireEditor } from '../middleware/auth.js';
 import slugify from 'slugify';
+import { BlockRepository } from '../db/repositories/BlockRepository.js';
 
 const router = express.Router();
+const blockRepo = new BlockRepository();
 
 // Get all blocks
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { content_type } = req.query;
+    const { content_type, limit = 50, offset = 0 } = req.query;
 
-    let sql = `
-      SELECT b.*, t.name as template_name, COALESCE(c.data, '{}') as content_data
-      FROM blocks b
-      LEFT JOIN templates t ON b.template_id = t.id
-      LEFT JOIN content c ON b.content_id = c.id
-    `;
-    const params = [];
+    // Validate pagination parameters
+    const pageLimit = Math.max(1, Math.min(500, parseInt(limit) || 50));
+    const pageOffset = Math.max(0, parseInt(offset) || 0);
 
-    if (content_type) {
-      sql += ' WHERE b.content_type = ?';
-      params.push(content_type);
-    }
+    const blocks = await blockRepo.listForUI(
+      { content_type },
+      pageLimit,
+      pageOffset
+    );
 
-    sql += ' ORDER BY b.name';
+    const total = await blockRepo.countWithFilters({ content_type });
 
-    const blocks = await query(sql, params);
-
-    // Parse content JSON
-    blocks.forEach(block => {
-      try {
-        block.content = JSON.parse(block.content_data || '{}');
-      } catch (e) {
-        block.content = {};
+    res.json({
+      data: blocks,
+      pagination: {
+        total,
+        limit: pageLimit,
+        offset: pageOffset
       }
-      delete block.content_data;
     });
-
-    res.json(blocks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -46,41 +40,13 @@ router.get('/', requireAuth, async (req, res) => {
 // Get single block
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    const [block] = await query(`
-      SELECT b.*, t.name as template_name, t.regions, COALESCE(c.data, '{}') as content_data
-      FROM blocks b
-      LEFT JOIN templates t ON b.template_id = t.id
-      LEFT JOIN content c ON b.content_id = c.id
-      WHERE b.id = ?
-    `, [req.params.id]);
+    const block = await blockRepo.getForUI(parseInt(req.params.id));
 
     if (!block) {
       return res.status(404).json({ error: 'Block not found' });
     }
 
-    // Parse content and regions
-    try {
-      block.content = JSON.parse(block.content_data || '{}');
-    } catch (e) {
-      block.content = {};
-    }
-    block.regions = typeof block.regions === 'string' ? JSON.parse(block.regions) : (block.regions || []);
-
-    // Return only serializable fields
-    res.json({
-      id: block.id,
-      template_id: block.template_id,
-      name: block.name,
-      slug: block.slug,
-      description: block.description,
-      content: block.content,
-      regions: block.regions,
-      template_name: block.template_name,
-      created_by: block.created_by,
-      updated_by: block.updated_by,
-      created_at: block.created_at,
-      updated_at: block.updated_at
-    });
+    res.json(block);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -90,9 +56,6 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/', requireAuth, requireEditor, async (req, res) => {
   try {
     const { template_id, name, description, content, content_type } = req.body;
-
-    console.log('[BLOCKS:POST] Received content type:', typeof content);
-    console.log('[BLOCKS:POST] Content keys:', content ? Object.keys(content) : 'null');
 
     if (!name || !template_id) {
       return res.status(400).json({ error: 'Name and template are required' });
@@ -116,57 +79,28 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
 
     const slug = slugify(name, { lower: true, strict: true });
 
-    // Create content record first
-    let contentId = null;
-    if (content && Object.keys(content).length > 0) {
-      const contentResult = await query(
-        'INSERT INTO content (type, data) VALUES (?, ?)',
-        ['blocks', JSON.stringify(content)]
-      );
-      contentId = contentResult.insertId;
-    }
-
-    const result = await query(
-      `INSERT INTO blocks (template_id, name, slug, description, content_id, content_type, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [template_id, name, slug, description || null, contentId || null, content_type || 'blocks', req.user?.id || null]
+    // Create block with content
+    const blockId = await blockRepo.createBlockWithContent(
+      {
+        template_id,
+        name,
+        slug,
+        description,
+        content_type,
+        created_by: req.user?.id || null
+      },
+      content
     );
 
-    const [block] = await query(`
-      SELECT b.*, COALESCE(c.data, '{}') as content_data
-      FROM blocks b
-      LEFT JOIN content c ON b.content_id = c.id
-      WHERE b.id = ?
-    `, [result.insertId]);
+    // Get created block for response
+    const block = await blockRepo.getForUI(blockId);
 
-    // Parse content
-    try {
-      block.content = JSON.parse(block.content_data || '{}');
-    } catch (e) {
-      block.content = {};
-    }
-
-    // Return only serializable fields
-    const response = {
-      id: block.id,
-      template_id: block.template_id,
-      name: block.name,
-      slug: block.slug,
-      description: block.description,
-      content: block.content,
-      created_by: block.created_by,
-      updated_by: block.updated_by,
-      created_at: block.created_at,
-      updated_at: block.updated_at
-    };
-
-    console.log('[BLOCKS:POST] Response content type:', typeof response.content);
-    res.status(201).json(response);
+    res.status(201).json(block);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
     }
-    console.error('[BLOCKS:POST] Error:', err.message, err.stack);
+    console.error('[BLOCKS:POST] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -175,9 +109,6 @@ router.post('/', requireAuth, requireEditor, async (req, res) => {
 router.put('/:id', requireAuth, requireEditor, async (req, res) => {
   try {
     const { template_id, name, description, content, content_type } = req.body;
-
-    console.log('[BLOCKS:PUT] Received content type:', typeof content);
-    console.log('[BLOCKS:PUT] Content keys:', content ? Object.keys(content) : 'null');
 
     // Validate template belongs to blocks content type if changing it
     if (template_id !== undefined) {
@@ -197,112 +128,44 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
       }
     }
 
-    const slug = name ? slugify(name, { lower: true, strict: true }) : undefined;
-
-    // Get current block to handle content updates
-    const [existingBlock] = await query(
-      'SELECT content_id FROM blocks WHERE id = ?',
-      [req.params.id]
-    );
-
+    // Check if block exists
+    const existingBlock = await blockRepo.findById(parseInt(req.params.id));
     if (!existingBlock) {
       return res.status(404).json({ error: 'Block not found' });
     }
 
-    // Handle content update
-    let contentIdToSet = existingBlock.content_id;
-    if (content !== undefined) {
-      if (contentIdToSet) {
-        // Update existing content
-        await query(
-          'UPDATE content SET data = ? WHERE id = ?',
-          [JSON.stringify(content), contentIdToSet]
-        );
-      } else if (content && Object.keys(content).length > 0) {
-        // Create new content record
-        const contentResult = await query(
-          'INSERT INTO content (type, data) VALUES (?, ?)',
-          ['blocks', JSON.stringify(content)]
-        );
-        contentIdToSet = contentResult.insertId;
-      }
-    }
-
-    const updates = [];
-    const values = [];
-
-    if (template_id !== undefined) {
-      updates.push('template_id = ?');
-      values.push(template_id);
-    }
+    // Build block updates
+    const blockUpdates = {};
+    if (template_id !== undefined) blockUpdates.template_id = template_id;
+    if (name !== undefined) blockUpdates.name = name;
     if (name !== undefined) {
-      updates.push('name = ?');
-      values.push(name);
+      blockUpdates.slug = slugify(name, { lower: true, strict: true });
     }
-    if (slug) {
-      updates.push('slug = ?');
-      values.push(slug);
-    }
-    if (description !== undefined) {
-      updates.push('description = ?');
-      values.push(description || null);
-    }
+    if (description !== undefined) blockUpdates.description = description || null;
+    if (content_type !== undefined) blockUpdates.content_type = content_type;
+    blockUpdates.updated_by = req.user?.id || null;
+
+    // Build content updates
+    const contentUpdates = {};
     if (content !== undefined) {
-      updates.push('content_id = ?');
-      values.push(contentIdToSet || null);
-    }
-    if (content_type !== undefined) {
-      updates.push('content_type = ?');
-      values.push(content_type);
+      Object.assign(contentUpdates, content);
     }
 
-    updates.push('updated_by = ?');
-    values.push(req.user?.id || null);
+    // Update block with content
+    const block = await blockRepo.updateBlockWithContent(
+      parseInt(req.params.id),
+      blockUpdates,
+      contentUpdates
+    );
 
-    values.push(req.params.id);
-
-    if (updates.length > 0) {
-      await query(
-        `UPDATE blocks SET ${updates.join(', ')} WHERE id = ?`,
-        values
-      );
-    }
-
-    const [block] = await query(`
-      SELECT b.*, COALESCE(c.data, '{}') as content_data
-      FROM blocks b
-      LEFT JOIN content c ON b.content_id = c.id
-      WHERE b.id = ?
-    `, [req.params.id]);
-
-    // Parse content
-    try {
-      block.content = JSON.parse(block.content_data || '{}');
-    } catch (e) {
-      block.content = {};
-    }
-
-    // Return only serializable fields
-    const response = {
-      id: block.id,
-      template_id: block.template_id,
-      name: block.name,
-      slug: block.slug,
-      description: block.description,
-      content: block.content,
-      created_by: block.created_by,
-      updated_by: block.updated_by,
-      created_at: block.created_at,
-      updated_at: block.updated_at
-    };
-
-    console.log('[BLOCKS:PUT] Response content type:', typeof response.content);
+    // Get clean response
+    const response = await blockRepo.getForUI(parseInt(req.params.id));
     res.json(response);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(400).json({ error: 'A block with this name already exists' });
     }
-    console.error('[BLOCKS:PUT] Error:', err.message, err.stack);
+    console.error('[BLOCKS:PUT] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -310,7 +173,7 @@ router.put('/:id', requireAuth, requireEditor, async (req, res) => {
 // Delete block
 router.delete('/:id', requireAuth, requireEditor, async (req, res) => {
   try {
-    await query('DELETE FROM blocks WHERE id = ?', [req.params.id]);
+    await blockRepo.delete(parseInt(req.params.id));
     res.json({ message: 'Block deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
