@@ -18,6 +18,31 @@ export class CustomerRepository extends BaseRepository {
   }
 
   /**
+   * Upsert customer (create or update)
+   */
+  async upsertCustomer(email, firstName, lastName, phone = null, userId = null) {
+    const existing = await this.findByEmail(email);
+
+    if (existing) {
+      // Update existing customer
+      await query(
+        `UPDATE customers SET first_name = ?, last_name = ?, phone = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [firstName, lastName, phone, existing.id]
+      );
+      return existing.id;
+    } else {
+      // Create new customer
+      const result = await query(
+        `INSERT INTO customers (email, first_name, last_name, phone, user_id)
+         VALUES (?, ?, ?, ?, ?)`,
+        [email, firstName, lastName, phone, userId || null]
+      );
+      return result.insertId;
+    }
+  }
+
+  /**
    * List customers with search
    */
   async listWithSearch(search = '', limit = 50, offset = 0) {

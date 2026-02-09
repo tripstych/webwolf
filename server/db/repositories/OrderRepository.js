@@ -93,7 +93,114 @@ export class OrderRepository extends BaseRepository {
       [orderId]
     );
 
+    // Parse JSON fields
+    if (order.billing_address) {
+      try {
+        order.billing_address = JSON.parse(order.billing_address);
+      } catch (e) {
+        order.billing_address = {};
+      }
+    }
+    if (order.shipping_address) {
+      try {
+        order.shipping_address = JSON.parse(order.shipping_address);
+      } catch (e) {
+        order.shipping_address = {};
+      }
+    }
+
     return { ...order, items };
+  }
+
+  /**
+   * Generate next order number
+   */
+  async generateOrderNumber() {
+    const results = await query(
+      `SELECT order_number FROM \`orders\` ORDER BY id DESC LIMIT 1`
+    );
+
+    let nextNumber = 1001;
+    if (results.length > 0) {
+      const lastNumber = parseInt(results[0].order_number.replace('#', ''));
+      nextNumber = lastNumber + 1;
+    }
+
+    return `#${nextNumber}`;
+  }
+
+  /**
+   * Create order items from cart
+   */
+  async createOrderItems(orderId, cartItems) {
+    for (const item of cartItems) {
+      let productTitle = '';
+      let variantTitle = '';
+      let sku = '';
+
+      // Get product details
+      const product = await query(
+        `SELECT p.sku, c.title FROM products p
+         LEFT JOIN content c ON p.content_id = c.id
+         WHERE p.id = ?`,
+        [item.productId]
+      );
+
+      if (product[0]) {
+        productTitle = product[0].title || '';
+        sku = product[0].sku || '';
+      }
+
+      // Get variant details if applicable
+      let variantId = null;
+      if (item.variantId) {
+        const variant = await query(
+          'SELECT id, title FROM product_variants WHERE id = ?',
+          [item.variantId]
+        );
+        if (variant[0]) {
+          variantId = variant[0].id;
+          variantTitle = variant[0].title || '';
+        }
+      }
+
+      await query(
+        `INSERT INTO \`order_items\` (
+          order_id, product_id, variant_id, product_title, variant_title, sku,
+          price, quantity, subtotal
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          orderId,
+          item.productId,
+          variantId,
+          productTitle,
+          variantTitle,
+          sku,
+          item.price,
+          item.quantity,
+          item.price * item.quantity
+        ]
+      );
+    }
+  }
+
+  /**
+   * Deduct inventory from products and variants
+   */
+  async deductInventory(cartItems) {
+    for (const item of cartItems) {
+      if (item.variantId) {
+        await query(
+          `UPDATE product_variants SET inventory_quantity = inventory_quantity - ? WHERE id = ?`,
+          [item.quantity, item.variantId]
+        );
+      } else {
+        await query(
+          `UPDATE products SET inventory_quantity = inventory_quantity - ? WHERE id = ?`,
+          [item.quantity, item.productId]
+        );
+      }
+    }
   }
 
   /**
