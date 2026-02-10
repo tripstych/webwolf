@@ -382,7 +382,7 @@ export default function ProductEditor() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {!isNew && product.slug && (
             <a
-              href={`/products/${product.slug}`}
+              href={`/${product.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-secondary"

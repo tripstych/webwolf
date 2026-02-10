@@ -188,7 +188,7 @@ export default function ProductList() {
                       <div className="flex items-center justify-center gap-2">
                         {product.slug && (
                           <a
-                            href={`/products/${product.slug}`}
+                            href={`/${product.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
