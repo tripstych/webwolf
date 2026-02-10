@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
 
 export default function ProductList() {
   const navigate = useNavigate();
@@ -186,6 +186,17 @@ export default function ProductList() {
                     </td>
                     <td className="px-6 py-4 text-sm text-center">
                       <div className="flex items-center justify-center gap-2">
+                        {product.slug && (
+                          <a
+                            href={`/products/${product.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                            title="View on site"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
                         <button
                           onClick={() => navigate(`/products/${product.id}`)}
                           className="p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors"

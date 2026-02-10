@@ -6,7 +6,7 @@ import TitleSlugSection from '../components/TitleSlugSection';
 import RichTextEditor from '../components/RichTextEditor';
 import MediaPicker from '../components/MediaPicker';
 import ContentGroupsWidget from '../components/ContentGroupsWidget';
-import { Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Save, ArrowLeft, Image as ImageIcon, ExternalLink } from 'lucide-react';
 
 export default function ProductEditor() {
   const { id } = useParams();
@@ -380,6 +380,18 @@ export default function ProductEditor() {
       }}>
         <h1>{isNew ? 'New Product' : 'Edit Product'}</h1>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {!isNew && product.slug && (
+            <a
+              href={`/products/${product.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              View on site
+            </a>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => navigate('/products')}
