@@ -36,7 +36,7 @@ export default function GroupEditor() {
       });
       if (groupsRes.ok) {
         const groupsData = await groupsRes.json();
-        setAllGroups(groupsData);
+        setAllGroups(groupsData.data || groupsData || []);
       }
 
       // Load all content from database
@@ -45,7 +45,7 @@ export default function GroupEditor() {
       });
       if (contentRes.ok) {
         const contentData = await contentRes.json();
-        setAllContent(contentData);
+        setAllContent(contentData.data || contentData || []);
       }
 
       // Load group if editing

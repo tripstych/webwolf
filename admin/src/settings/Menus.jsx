@@ -42,10 +42,11 @@ export default function Menus() {
 
   const loadMenus = async () => {
     try {
-      const data = await api.get('/menus');
-      setMenus(data);
-      if (data.length > 0 && !selectedMenu) {
-        loadMenu(data[0].id);
+      const response = await api.get('/menus');
+      const menusData = response.data || response || [];
+      setMenus(menusData);
+      if (menusData.length > 0 && !selectedMenu) {
+        loadMenu(menusData[0].id);
       }
     } catch (err) {
       console.error('Failed to load menus:', err);
@@ -65,9 +66,9 @@ export default function Menus() {
 
   const loadPages = async () => {
     try {
-      const data = await api.get('/pages?status=published');
-      const normalizedPages = Array.isArray(data) ? data : (data?.pages || []);
-      setPages(normalizedPages);
+      const response = await api.get('/pages?status=published');
+      const pagesData = response.data || response || [];
+      setPages(pagesData);
     } catch (err) {
       console.error('Failed to load pages:', err);
     }

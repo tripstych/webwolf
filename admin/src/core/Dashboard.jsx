@@ -18,11 +18,14 @@ export default function Dashboard() {
 
   const loadDashboard = async () => {
     try {
-      const [pages, templates, media] = await Promise.all([
+      const [pagesResponse, templatesResponse, mediaResponse] = await Promise.all([
         api.get('/pages'),
         api.get('/templates'),
         api.get('/media?limit=1')
       ]);
+
+      const pages = pagesResponse.data || [];
+      const templates = templatesResponse.data || [];
 
       setStats({
         pages: {
@@ -31,7 +34,7 @@ export default function Dashboard() {
           draft: pages.filter(p => p.status === 'draft').length
         },
         templates: templates.length,
-        media: media.pagination?.total || 0
+        media: mediaResponse.pagination?.total || 0
       });
 
       setRecentPages(pages.slice(0, 5));

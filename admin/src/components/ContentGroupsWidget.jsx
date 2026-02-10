@@ -24,7 +24,7 @@ export default function ContentGroupsWidget({ contentId, onGroupsChange }) {
 
       if (response.ok) {
         const data = await response.json();
-        setGroups(data);
+        setGroups(data.data || data || []);
       }
     } catch (err) {
       console.error('Error loading content groups:', err);
@@ -41,7 +41,7 @@ export default function ContentGroupsWidget({ contentId, onGroupsChange }) {
 
       if (response.ok) {
         const data = await response.json();
-        setAvailableGroups(data);
+        setAvailableGroups(data.data || data || []);
       }
     } catch (err) {
       console.error('Error loading available groups:', err);
