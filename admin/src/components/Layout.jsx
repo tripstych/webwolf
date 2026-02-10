@@ -79,7 +79,7 @@ export default function Layout({ children }) {
         { name: 'Menus', href: '/menus', icon: List },
         { name: 'Groups', href: '/groups', icon: Tag },
         ...contentTypes
-          .filter(type => !['products', 'pages', 'blocks', 'shop', 'shops'].includes(type.name))
+          .filter(type => !['products', 'pages', 'blocks', 'shop', 'shops', 'blog', 'components', 'partials', 'customer'].includes(type.name))
           .map(type => ({
             name: type.plural_label,
             href: `/${type.name}`,
