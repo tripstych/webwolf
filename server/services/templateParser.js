@@ -225,7 +225,7 @@ export async function scanPageTemplates() {
 /**
  * Auto-register content types discovered from templates
  */
-async function registerContentTypes(queryFn, templates) {
+async function registerContentTypes(prisma, templates) {
   const discoveredTypes = new Set();
 
   templates.forEach(template => {
@@ -235,28 +235,25 @@ async function registerContentTypes(queryFn, templates) {
 
   for (const typeName of discoveredTypes) {
     // Check if content type already exists
-    const existing = await queryFn(
-      'SELECT id FROM content_types WHERE name = ?',
-      [typeName]
-    );
+    const existing = await prisma.content_types.findUnique({
+      where: { name: typeName }
+    });
 
-    if (existing.length === 0) {
+    if (!existing) {
       // Create new content type with sensible defaults
       const label = formatContentTypeLabel(typeName);
       const pluralLabel = pluralize.plural(label);
 
-      await queryFn(
-        `INSERT INTO content_types (name, label, plural_label, icon, has_status, has_seo)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          typeName,
+      await prisma.content_types.create({
+        data: {
+          name: typeName,
           label,
-          pluralLabel,
-          getDefaultIcon(typeName),
-          typeName !== 'blocks', // blocks don't have status
-          typeName !== 'blocks'   // all non-block types have SEO
-        ]
-      );
+          plural_label: pluralLabel,
+          icon: getDefaultIcon(typeName),
+          has_status: typeName !== 'blocks', // blocks don't have status
+          has_seo: typeName !== 'blocks'     // all non-block types have SEO
+        }
+      });
     }
   }
 }
@@ -264,22 +261,31 @@ async function registerContentTypes(queryFn, templates) {
 /**
  * Sync templates from filesystem to database
  */
-export async function syncTemplatesToDb(queryFn) {
+export async function syncTemplatesToDb(prisma) {
   const templates = await scanTemplates();
 
   for (const template of templates) {
     const contentType = extractContentType(template.filename);
 
-    await queryFn(
-      `INSERT INTO templates (name, filename, regions, content_type)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE regions = VALUES(regions), name = VALUES(name), content_type = VALUES(content_type)`,
-      [template.name, template.filename, JSON.stringify(template.regions), contentType]
-    );
+    // Use upsert to insert or update
+    await prisma.templates.upsert({
+      where: { filename: template.filename },
+      create: {
+        name: template.name,
+        filename: template.filename,
+        regions: JSON.stringify(template.regions),
+        content_type: contentType
+      },
+      update: {
+        name: template.name,
+        regions: JSON.stringify(template.regions),
+        content_type: contentType
+      }
+    });
   }
 
   // Auto-discover and register new content types
-  await registerContentTypes(queryFn, templates);
+  await registerContentTypes(prisma, templates);
 
   return templates;
 }
