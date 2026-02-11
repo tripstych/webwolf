@@ -212,6 +212,9 @@ export default function ProductEditor() {
   const handleMediaSelect = (media) => {
     if (mediaPickerTarget === 'og_image') {
       setProduct({ ...product, og_image: media.url });
+    } else if (mediaPickerTarget?.startsWith('variant.')) {
+      const vIndex = parseInt(mediaPickerTarget.split('.')[1]);
+      handleVariantChange(vIndex, 'image', media.url);
     } else {
       // Extract field name from target (e.g., "content.image" -> "image")
       const fieldName = mediaPickerTarget.split('.')[1];
@@ -672,6 +675,7 @@ export default function ProductEditor() {
                       <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>SKU</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Price</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Inventory</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Image</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -704,6 +708,31 @@ export default function ProductEditor() {
                             onChange={(e) => handleVariantChange(vIndex, 'inventory_quantity', parseInt(e.target.value) || 0)}
                             style={{ width: '80px', padding: '0.35rem 0.5rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.875rem' }}
                           />
+                        </td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {variant.image && (
+                              <img src={variant.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }} />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openMediaPicker(`variant.${vIndex}`)}
+                              style={{ background: 'none', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center' }}
+                              title="Select image"
+                            >
+                              <ImageIcon className="w-4 h-4" style={{ color: '#6b7280' }} />
+                            </button>
+                            {variant.image && (
+                              <button
+                                type="button"
+                                onClick={() => handleVariantChange(vIndex, 'image', null)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0 }}
+                                title="Remove image"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
