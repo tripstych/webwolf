@@ -6,7 +6,7 @@ import TitleSlugSection from '../components/TitleSlugSection';
 import RichTextEditor from '../components/RichTextEditor';
 import MediaPicker from '../components/MediaPicker';
 import ContentGroupsWidget from '../components/ContentGroupsWidget';
-import { Save, ArrowLeft, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Save, ArrowLeft, Image as ImageIcon, ExternalLink, Plus, X, Trash2 } from 'lucide-react';
 
 export default function ProductEditor() {
   const { id } = useParams();
@@ -46,6 +46,60 @@ export default function ProductEditor() {
   const [error, setError] = useState(null);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mediaPickerTarget, setMediaPickerTarget] = useState(null);
+  const [options, setOptions] = useState([]);
+
+  // Variant helpers
+  const cartesian = (arrays) => {
+    if (arrays.length === 0) return [];
+    return arrays.reduce((acc, arr) =>
+      acc.flatMap(combo => arr.map(val => [...combo, val])),
+      [[]]
+    );
+  };
+
+  const deriveOptionsFromVariants = (variants) => {
+    const opts = [];
+    for (let i = 1; i <= 3; i++) {
+      const name = variants[0]?.[`option${i}_name`];
+      if (name) {
+        const values = [...new Set(variants.map(v => v[`option${i}_value`]).filter(Boolean))];
+        opts.push({ name, values });
+      }
+    }
+    return opts;
+  };
+
+  const generateVariantsFromOptions = (opts, existingVariants = []) => {
+    const filteredOpts = opts.filter(o => o.name && o.values.length > 0);
+    if (filteredOpts.length === 0) return [];
+    const combos = cartesian(filteredOpts.map(o => o.values));
+    return combos.map((combo, i) => {
+      const existing = existingVariants.find(v =>
+        filteredOpts.every((opt, j) => v[`option${j + 1}_value`] === combo[j])
+      );
+      const variant = {
+        ...(existing ? {
+          id: existing.id,
+          sku: existing.sku,
+          price: existing.price,
+          compare_at_price: existing.compare_at_price,
+          inventory_quantity: existing.inventory_quantity,
+          image: existing.image
+        } : {}),
+        title: combo.join(' / '),
+        position: i,
+      };
+      filteredOpts.forEach((opt, j) => {
+        variant[`option${j + 1}_name`] = opt.name;
+        variant[`option${j + 1}_value`] = combo[j];
+      });
+      for (let j = filteredOpts.length + 1; j <= 3; j++) {
+        variant[`option${j}_name`] = null;
+        variant[`option${j}_value`] = null;
+      }
+      return variant;
+    });
+  };
 
   // Product module default fields
   const productDefaultFields = [
@@ -124,6 +178,11 @@ export default function ProductEditor() {
       const data = await response.json();
       setProduct(data);
 
+      // Derive options from existing variants
+      if (data.variants && data.variants.length > 0) {
+        setOptions(deriveOptionsFromVariants(data.variants));
+      }
+
       // Load template regions if product has a template
       if (data.template_id) {
         const template = templates.find(t => t.id === data.template_id);
@@ -160,6 +219,55 @@ export default function ProductEditor() {
     }
     setMediaPickerOpen(false);
     setMediaPickerTarget(null);
+  };
+
+  // Option & variant handlers
+  const addOption = () => {
+    if (options.length >= 3) return;
+    setOptions([...options, { name: '', values: [] }]);
+  };
+
+  const removeOption = (index) => {
+    const newOptions = options.filter((_, i) => i !== index);
+    setOptions(newOptions);
+    setProduct(p => ({ ...p, variants: generateVariantsFromOptions(newOptions, p.variants) }));
+  };
+
+  const updateOptionName = (index, name) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], name };
+    setOptions(newOptions);
+    setProduct(p => ({ ...p, variants: generateVariantsFromOptions(newOptions, p.variants) }));
+  };
+
+  const addOptionValue = (optionIndex, value) => {
+    if (!value.trim()) return;
+    const newOptions = [...options];
+    if (newOptions[optionIndex].values.includes(value.trim())) return;
+    newOptions[optionIndex] = {
+      ...newOptions[optionIndex],
+      values: [...newOptions[optionIndex].values, value.trim()]
+    };
+    setOptions(newOptions);
+    setProduct(p => ({ ...p, variants: generateVariantsFromOptions(newOptions, p.variants) }));
+  };
+
+  const removeOptionValue = (optionIndex, valueIndex) => {
+    const newOptions = [...options];
+    newOptions[optionIndex] = {
+      ...newOptions[optionIndex],
+      values: newOptions[optionIndex].values.filter((_, i) => i !== valueIndex)
+    };
+    setOptions(newOptions);
+    setProduct(p => ({ ...p, variants: generateVariantsFromOptions(newOptions, p.variants) }));
+  };
+
+  const handleVariantChange = (variantIndex, field, value) => {
+    setProduct(p => {
+      const variants = [...p.variants];
+      variants[variantIndex] = { ...variants[variantIndex], [field]: value };
+      return { ...p, variants };
+    });
   };
 
   const handleSave = async () => {
@@ -469,6 +577,141 @@ export default function ProductEditor() {
               {field.type !== 'checkbox' && renderField(field)}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Options & Variants Section */}
+      {product.template_id && (
+        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Options & Variants</h2>
+            {options.length < 3 && (
+              <button
+                type="button"
+                onClick={addOption}
+                className="btn btn-secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+              >
+                <Plus className="w-4 h-4" /> Add Option
+              </button>
+            )}
+          </div>
+
+          {options.length === 0 && (
+            <p style={{ color: '#6b7280', margin: 0 }}>
+              No options defined. Add options like Color or Size to create product variants.
+            </p>
+          )}
+
+          {options.map((option, optIndex) => (
+            <div key={optIndex} style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <input
+                  type="text"
+                  value={option.name}
+                  onChange={(e) => updateOptionName(optIndex, e.target.value)}
+                  placeholder="Option name (e.g. Color, Size)"
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '4px', fontWeight: 500 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeOption(optIndex)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem' }}
+                  title="Remove option"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                {option.values.map((val, valIndex) => (
+                  <span
+                    key={valIndex}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                      background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px',
+                      padding: '0.25rem 0.5rem', fontSize: '0.875rem'
+                    }}
+                  >
+                    {val}
+                    <button
+                      type="button"
+                      onClick={() => removeOptionValue(optIndex, valIndex)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, lineHeight: 1 }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input
+                type="text"
+                placeholder="Type a value and press Enter"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addOptionValue(optIndex, e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.875rem' }}
+              />
+            </div>
+          ))}
+
+          {/* Variant Table */}
+          {product.variants && product.variants.length > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>
+                Variants ({product.variants.length})
+              </h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Variant</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>SKU</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Price</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Inventory</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.variants.map((variant, vIndex) => (
+                      <tr key={vIndex} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem', fontWeight: 500 }}>{variant.title}</td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <input
+                            type="text"
+                            value={variant.sku || ''}
+                            onChange={(e) => handleVariantChange(vIndex, 'sku', e.target.value)}
+                            placeholder={product.sku ? `${product.sku}-${vIndex + 1}` : ''}
+                            style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variant.price ?? ''}
+                            onChange={(e) => handleVariantChange(vIndex, 'price', e.target.value ? parseFloat(e.target.value) : null)}
+                            placeholder={product.price?.toString() || '0'}
+                            style={{ width: '100px', padding: '0.35rem 0.5rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <input
+                            type="number"
+                            value={variant.inventory_quantity ?? 0}
+                            onChange={(e) => handleVariantChange(vIndex, 'inventory_quantity', parseInt(e.target.value) || 0)}
+                            style={{ width: '80px', padding: '0.35rem 0.5rem', border: '1px solid #ddd', borderRadius: '4px', fontSize: '0.875rem' }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

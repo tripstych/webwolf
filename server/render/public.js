@@ -644,6 +644,14 @@ router.get('*', async (req, res) => {
         pageData.title = pageData.content_title;
         delete pageData.content_title;
       }
+      // Fetch product variants
+      if (pageData) {
+        const variants = await query(
+          'SELECT * FROM product_variants WHERE product_id = ? ORDER BY position ASC',
+          [pageData.id]
+        );
+        pageData.variants = variants;
+      }
     } else if (contentType === 'blocks') {
       const blocks = await query(`
         SELECT b.*, t.filename as template_filename

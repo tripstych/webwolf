@@ -8,8 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const qtyInput = document.getElementById('qty-input');
   const qtyMinus = document.getElementById('qty-minus');
   const qtyPlus = document.getElementById('qty-plus');
-  const variantOptions = document.querySelectorAll('.variant-option');
-
   let selectedVariantId = null;
   let selectedPrice = null;
 
@@ -46,29 +44,89 @@ document.addEventListener('DOMContentLoaded', () => {
     qtyInput.value = Math.max(1, Math.min(max, value));
   });
 
-  // Variant selection
-  variantOptions.forEach(option => {
-    option.addEventListener('click', (e) => {
-      // Remove active class from all options in this group
-      const parentGroup = option.closest('.variant-group');
-      parentGroup?.querySelectorAll('.variant-option').forEach(o => {
-        o.classList.remove('active');
+  // Multi-option variant selector
+  const variantJsonEl = document.getElementById('variant-json');
+  if (variantJsonEl) {
+    const variants = JSON.parse(variantJsonEl.textContent);
+    const container = document.getElementById('variant-selectors');
+
+    if (variants.length > 0 && container) {
+      // Extract unique option names and values
+      const optionGroups = [];
+      for (let i = 1; i <= 3; i++) {
+        const name = variants[0]['option' + i + '_name'];
+        if (name) {
+          const values = [];
+          variants.forEach(v => {
+            const val = v['option' + i + '_value'];
+            if (val && values.indexOf(val) === -1) values.push(val);
+          });
+          optionGroups.push({ name, values, index: i });
+        }
+      }
+
+      // Track selected values
+      const selectedOptions = {};
+
+      // Build UI for each option group
+      optionGroups.forEach(group => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'variant-group';
+        groupDiv.innerHTML = '<label class="variant-group-label">' + group.name + '</label>';
+
+        const optionsDiv = document.createElement('div');
+        optionsDiv.className = 'variant-options';
+
+        group.values.forEach((value, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'variant-option' + (idx === 0 ? ' active' : '');
+          btn.textContent = value;
+          if (idx === 0) selectedOptions[group.name] = value;
+
+          btn.addEventListener('click', () => {
+            optionsDiv.querySelectorAll('.variant-option').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedOptions[group.name] = value;
+            resolveVariant();
+          });
+
+          optionsDiv.appendChild(btn);
+        });
+
+        groupDiv.appendChild(optionsDiv);
+        container.appendChild(groupDiv);
       });
 
-      // Add active class to clicked option
-      option.classList.add('active');
+      // Resolve the matching variant from all selected options
+      function resolveVariant() {
+        const match = variants.find(v =>
+          optionGroups.every(group =>
+            v['option' + group.index + '_value'] === selectedOptions[group.name]
+          )
+        );
 
-      // Update selected variant and price
-      selectedVariantId = parseInt(option.dataset.variantId);
-      selectedPrice = parseFloat(option.dataset.variantPrice);
+        if (match) {
+          selectedVariantId = match.id;
+          const variantPrice = match.price !== null && match.price !== undefined ? match.price : selectedPrice;
 
-      // Update quantity input max
-      const variantQty = option.dataset.variantQty;
-      if (variantQty) {
-        qtyInput.max = variantQty;
+          // Update price display
+          const priceEl = document.querySelector('.product-price');
+          if (priceEl) priceEl.textContent = '$' + parseFloat(variantPrice).toFixed(2);
+
+          // Update max quantity
+          if (match.inventory_quantity !== undefined && match.inventory_quantity !== null) {
+            qtyInput.max = match.inventory_quantity;
+          }
+
+          selectedPrice = variantPrice;
+        }
       }
-    });
-  });
+
+      // Initial resolve with defaults
+      resolveVariant();
+    }
+  }
 
   // Add to cart
   addToCartBtn.addEventListener('click', async (e) => {

@@ -16,6 +16,11 @@
 
       <div class="product-price">${{ product.price | round(2) }}</div>
 
+      {% if product.variants and product.variants.length > 0 %}
+        <script id="variant-json" type="application/json">{{ product.variants | dump | safe }}</script>
+        <div id="variant-selectors"></div>
+      {% endif %}
+
       {% if product.inventory_tracking %}
         <div class="inventory">
           {% if product.inventory_quantity > 0 %}
@@ -148,6 +153,46 @@
   .add-to-cart-section .btn {
     flex: 1;
     padding: 0.75rem 1.5rem;
+  }
+
+  .variant-group {
+    margin-bottom: 1rem;
+  }
+
+  .variant-group-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #374151;
+  }
+
+  .variant-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .variant-option {
+    padding: 0.5rem 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.15s;
+  }
+
+  .variant-option:hover {
+    border-color: #9ca3af;
+  }
+
+  .variant-option.active {
+    border-color: #111;
+    background: #111;
+    color: white;
   }
 
   @media (max-width: 768px) {

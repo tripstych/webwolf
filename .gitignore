@@ -7,3 +7,4 @@ admin/dist/
 .DS_Store
 
 /generated/prisma
+nul
