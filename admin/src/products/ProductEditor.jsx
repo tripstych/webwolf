@@ -491,7 +491,7 @@ export default function ProductEditor() {
           {!isNew && product.slug && (
             <a
               
-              href={`/${product.slug}`}
+              href={product.slug}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-secondary"
